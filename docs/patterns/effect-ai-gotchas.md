@@ -1,0 +1,213 @@
+# `@effect/ai` gotchas
+
+Three patterns this project ran into during its first migration to
+`@effect/ai`. Each cost real debugging time; each fix is non-obvious from the
+public package docs. Plus a short tooling appendix at the bottom for things
+that are easy to discover once you know they exist.
+
+---
+
+## 1. Set `failureMode: "return"` on every fallible tool
+
+**Symptom.** A test (or a real model run) calls a tool with bad input. Instead
+of seeing the failure surface as a structured tool result the model can react
+to, the entire `LanguageModel.generateText` call rejects with the raw error
+string. Your turn dies. The model never gets a chance to recover.
+
+```
+Error: read failed: Error: ENOENT: no such file or directory, open '/no/such/path/xyz'
+```
+
+**Fix.** Add `failureMode: "return"` to the tool spec.
+
+```ts
+export const EditTool = Tool.make("edit", {
+  description: "...",
+  parameters: { path: Schema.String, oldString: Schema.String, newString: Schema.String },
+  success: Schema.Struct({ replaced: Schema.Number }),
+  failure: Schema.String,
+  failureMode: "return", // <- this
+});
+```
+
+**Why.** `Tool.make` defaults `failureMode` to `"error"`. In that mode, a
+handler's `Effect.fail(failure)` propagates as a true Effect failure, which
+escapes through `generateText` and kills the turn. With `"return"`, the
+framework catches the failure and encodes it into a `Response.toolResultPart`
+with `isFailure: true` on the returned `GenerateTextResponse` — the failure
+is now data the caller can hand back to the model on a subsequent turn
+(see gotcha §3 — `generateText` does not feed it back on its own). The
+point is that a single bad tool call must not abort the conversation; it
+should be recoverable on the next turn. Codex enforces the same invariant
+in `repos/codex/codex-rs/core/src/session/turn.rs` (`drain_in_flight`).
+
+Set `"return"` on **every** tool that has a non-`Never` failure schema. The
+two are coupled: declaring a failure schema and leaving `failureMode` at
+`"error"` is almost always a mistake.
+
+See: `src/tools/*.ts` for the canonical shape; `test/toolkit.test.ts` →
+"surfaces handler failures as tool result failures, not thrown errors" for
+the assertion.
+
+---
+
+## 2. Scope credential-requiring layers to the handler, not `MainLive`
+
+**Symptom.** Running `bun src/cli.ts --help` (no API key in env) prints:
+
+```
+[…] ERROR (#17):
+  Error: (Missing data at ANTHROPIC_API_KEY: "Expected ANTHROPIC_API_KEY to exist in the process context")
+```
+
+Help should not require credentials. Neither should listing subcommands,
+running validation, or any read-only operation.
+
+**Fix.** Don't put credential-reading layers in the top-level
+`Layer.mergeAll(...)`. Put them inside the specific command handler that
+actually needs them.
+
+```ts
+// src/cli.ts — wrong:
+// const MainLive = Layer.mergeAll(AnthropicClientLive, HarnessToolkitLayer, NodeContext.layer);
+
+// right:
+const runCommand = Command.make("run", {...}, ({ model, prompt }) =>
+  Effect.gen(function*() { /* uses LanguageModel */ }).pipe(
+    Effect.provide(AnthropicLanguageModel.layer({ model })),
+    Effect.provide(AnthropicClientLive),   // <- scoped here, not in MainLive
+  ),
+);
+
+const MainLive = Layer.mergeAll(HarnessToolkitLayer, NodeContext.layer);
+```
+
+**Why.** `AnthropicClient.layerConfig({ apiKey: Config.redacted(...) })` is
+built via `Config.all(configs).pipe(Effect.flatMap(make))` — the Config
+values are read when the layer materialises. When that layer sits in
+`MainLive`, providing `MainLive` to the whole CLI effect causes it to
+materialise before `@effect/cli` decides which subcommand to run, including
+`--help`.
+
+The principle generalises: **a Layer that fails on missing config is a Layer
+that should be provided as close to its first use as possible.** Putting it
+at `MainLive` makes the failure mode global; putting it inside the handler
+keeps it local to the code that genuinely needs it.
+
+See: `src/cli.ts` — `AnthropicClientLive` is provided inside `runCommand`,
+not in `MainLive`.
+
+---
+
+## 3. `generateText` is a single round-trip, not the agent loop
+
+**Symptom.** Two related confusions land here:
+
+- (a) You assume `generateText` only does one model call and start writing
+  your own loop with message threading, max-turn guards, the works.
+- (b) You assume `generateText` runs _the whole_ agent loop and call it
+  once, then can't figure out why your "multi-turn agent" only ever does
+  one turn against Anthropic.
+
+Both are wrong. The truth is in between.
+
+**Fix.** Use `generateText` for what it actually is — one model call plus
+intra-call tool dispatch — and drive multi-turn looping yourself (or use
+`Chat`, which keeps the history `Ref` for you).
+
+```ts
+// One round-trip. Model emits text + tool-calls; framework dispatches the
+// tool-calls through the registered handlers; you get back a single
+// aggregated response.
+const response =
+  yield *
+  LanguageModel.generateText({
+    prompt,
+    toolkit: HarnessToolkit,
+  });
+
+// For a true agent loop you call generateText repeatedly, appending the
+// prior response's parts to the prompt each time. `Chat` does this.
+```
+
+**Why.** Source: `repos/effect/packages/ai/ai/src/LanguageModel.ts:785` is
+the only call to the provider's `generateText` in the path —
+`generateContent` invokes it once, dispatches tool calls via
+`resolveToolCalls` (line 788, parallel-`Effect.forEach` over the tool-call
+parts), and returns. There is no `while`-loop, no max-iteration guard, no
+re-invocation of the model after tool dispatch.
+
+What `generateText` **does** handle for you:
+
+- Calling the provider once with the right prompt + tools.
+- Dispatching every tool call in the response through `toolkit.toLayer({...})`.
+- Encoding each handler outcome (success or `failureMode: "return"` failure)
+  into a `ToolResultPart` on the response.
+- Aggregating model parts + tool results into a single
+  `GenerateTextResponse`.
+
+What it **doesn't** handle: feeding tool results back to the model. If
+turn 1's tool result needs to inform turn 2's behaviour, you have to
+issue a second `generateText` call with an updated prompt.
+
+You can verify the single-turn semantic against
+`test/toolkit.test.ts` → "loop continues after a failed tool call" — the
+mock's call counter equals exactly the number of explicit `generateText`
+invocations from the test body.
+
+See also: `repos/effect/packages/ai/ai/src/Chat.ts` — `Chat.send` is the
+higher-level primitive that maintains history (`Ref.Ref<Prompt.Prompt>`)
+and re-invokes `generateText` per call, but it still doesn't loop on
+its own. If you want true multi-turn-until-stop, that's caller-driven.
+
+`src/cli.ts` currently does **one** `generateText` call per `run` command,
+so it's a single-turn CLI by design — for most concrete prompts Claude
+returns a full answer with a couple of tool calls in one response, but it
+will not chain follow-up turns on its own.
+
+---
+
+## Tooling appendix
+
+Smaller things that aren't worth a full pattern but will save five minutes
+of head-scratching.
+
+### `oxfmt` does not read `.oxfmtignore`
+
+The flag exists (`--ignore-path`), but by default `oxfmt` reads `.gitignore`
+and `.prettierignore`. If you check `repos/` into the repo (we do, as a
+git subtree of reference material), it won't be in `.gitignore` and `oxfmt`
+will happily descend into 2,700 vendored files.
+
+Put ignores in `.oxfmtrc.json`:
+
+```json
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": ["repos/**", "node_modules/**", "dist/**", "coverage/**"]
+}
+```
+
+### `oxlint` flags `_tag` as a dangling underscore
+
+`_tag` is the Effect idiom for tagged-union discriminants (`Data.TaggedError`,
+`Either`, `Option`). Oxlint's `no-underscore-dangle` rule (eslint-compat)
+warns on every access. Allow it explicitly:
+
+```json
+{
+  "rules": {
+    "no-underscore-dangle": ["warn", { "allow": ["_tag", "_op"] }]
+  }
+}
+```
+
+`_op` is the same idea for some lower-level Effect internals.
+
+### `@effect/ai`'s test mock isn't a public export
+
+The canonical pattern for mocking `LanguageModel` in tests lives in
+`repos/effect/packages/ai/ai/test/utilities.ts` as `withLanguageModel(...)`.
+It's not exported from the package. We mirror it in `test/utilities.ts` so
+test bodies stay clean. If you upgrade `@effect/ai`, glance at the upstream
+file to see if the mock shape changed.

@@ -1,0 +1,62 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "style": "off",
+    "restriction": "off",
+    "pedantic": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    "no-underscore-dangle": ["warn", { "allow": ["_tag", "_op"] }],
+    "no-console": "off",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-floating-promises": "off",
+    "typescript/no-confusing-void-expression": "off",
+    "typescript/no-invalid-void-type": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-array-reduce": "off",
+    "unicorn/prefer-top-level-await": "off",
+    "unicorn/no-await-expression-member": "off",
+    "unicorn/filename-case": ["error", { "case": "kebabCase" }],
+    "import/no-cycle": ["error", { "maxDepth": 3 }],
+    "import/no-duplicates": "error",
+    "import/no-self-import": "error",
+    "import/first": "error",
+    "promise/no-return-wrap": "error",
+    "promise/param-names": "error"
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*.ts", "**/*.test.ts"],
+      "plugins": ["vitest"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off",
+        "typescript/no-explicit-any": "off",
+        "vitest/no-focused-tests": "error",
+        "vitest/no-disabled-tests": "warn",
+        "vitest/expect-expect": "off"
+      }
+    },
+    {
+      "files": ["src/cli.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["repos/**", "node_modules/**", "dist/**"]
+}
