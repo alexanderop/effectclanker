@@ -41,6 +41,9 @@ if [ "$tool_use_count" -lt "$TOOL_THRESHOLD" ]; then
   exit 0
 fi
 
+# Grace period: give the user 15s to follow up before reflection kicks in.
+sleep 15
+
 # Single-line JSON so shell quoting stays sane. Newlines in `reason` are
 # encoded as literal \n which Claude renders correctly.
 cat <<'JSON'

@@ -1,8 +1,8 @@
 # effectclanker
 
-> `CLAUDE.md` is a symlink to this file — edit `AGENTS.md` directly. The Edit tool refuses to write through symlinks.
+A learning-grade coding harness built on Effect-TS and `@effect/ai`. The project exists to learn Effect by reading the OpenAI Codex source and reproducing its patterns in TypeScript. It is not a polished product.
 
-A learning-grade coding harness built on Effect-TS and `@effect/ai`.
+The harness wires six tools (`read`, `write`, `edit`, `bash`, `grep`, `glob`) into an Anthropic-backed `LanguageModel`. You give it a prompt; it calls tools until it has an answer.
 
 ## Stack
 
@@ -30,49 +30,116 @@ A learning-grade coding harness built on Effect-TS and `@effect/ai`.
 | `bun src/cli.ts run "<prompt>"` | invoke the harness — requires `ANTHROPIC_API_KEY`     |
 | `bun src/cli.ts --help`         | CLI help — no API key required                        |
 
-Run `bun run check` before declaring a change done.
+- **CRITICAL**: Run `bun run check` before declaring a change done. Your code does not work if you didn't run the tests.
+- Single test file: `bun run test test/tools/edit.test.ts`
+- Single test by name: `bun run test test/tools/edit.test.ts -t "fails when patch context is wrong"`
 
 ## Before you change anything
 
-Read **`docs/index.md`** first. It is the wiki landing page and links to:
+**Read `docs/index.md` first.** It is the wiki landing page and the load-bearing entry point for everything in this repo. Skim it, identify which linked files are relevant to your task, then read those before touching code.
 
-- `docs/architecture.md` — how the three layers (`Tool` / `Toolkit` / `LanguageModel`) fit together, and the dataflow from prompt to response.
-- `docs/guides/adding-a-tool.md` — recipe for the most common task in this codebase.
-- `docs/guides/testing.md` — `it.effect`, the `withLanguageModel` mock, `Effect.either` for failure assertions.
+The most-touched ones, by frequency:
+
+- `docs/architecture.md` — the three layers (`Tool` / `Toolkit` / `LanguageModel`), where each one lives, how a prompt becomes a response.
+- `docs/guides/adding-a-tool.md` — the recipe for the most common task in this codebase.
+- `docs/testing-strategy.md` — the test pyramid and why we don't hit real LLMs in CI. Read this _before_ the mechanics doc below.
+- `docs/guides/testing.md` — `it.effect`, the `withLanguageModel` mock, handler-direct vs toolkit-via-mock test styles, `Effect.acquireUseRelease` for tmp dirs.
 - `docs/tooling.md` — deeper notes on the stack and the `check` pipeline.
 - `docs/patterns/effect-ai-gotchas.md` — non-obvious things that will bite you (`failureMode: "return"`, Layer scoping, the internal turn loop).
+- `docs/principles.md` — engineering principles, indexed under `docs/principles/`. Refer back when planning or reviewing.
 
-Skim `index.md`, identify which docs are relevant to the task in front of you, then read those before touching code.
+Do not guess at `@effect/ai` semantics — the source is vendored at `repos/effect/`. Read it.
 
 ## Reference repositories
 
-Source-of-truth code for libraries we depend on. Treat as **read-only reference material** — do not edit files under `repos/`. When asked about a library listed below, explore its source here first instead of guessing or relying on training data.
+Source-of-truth code for libraries we depend on and patterns we model after. Treat as **read-only reference material** — do not edit files under `repos/`. When in doubt about an `@effect/*` API, how Codex does X, or how `pi` solves a similar agent-harness problem, read the source there instead of guessing or asking an LLM.
 
 - `repos/effect/` — https://github.com/Effect-TS/effect @ main (squashed)
 - `repos/codex/` — https://github.com/openai/codex.git @ main (squashed)
 - `repos/pi/` — https://github.com/earendil-works/pi.git @ main (squashed)
 
+oxlint and oxfmt carry explicit `repos/**` ignore patterns — vendored source is not subject to our style rules.
+
+## Code architecture
+
+| Path                   | What it is                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `src/tools/*.ts`       | One file per tool. Each exports a `Tool.make` spec and a handler function.     |
+| `src/toolkit.ts`       | `Toolkit.make(...)` of all tools, plus `.toLayer({...})` wiring handlers.      |
+| `src/cli.ts`           | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`. |
+| `src/services/`        | Effect services (e.g. `Sandbox`) consumed by tool handlers.                    |
+| `src/index.ts`         | Library barrel exports.                                                        |
+| `test/utilities.ts`    | Mirror of `@effect/ai`'s `withLanguageModel` test helper + tmp-dir helpers.    |
+| `test/tools/*.test.ts` | Handler-direct tests (one per tool).                                           |
+| `test/toolkit.test.ts` | End-to-end tests through `generateText` with a mock model.                     |
+
+The three layers — `Tool` (spec), `Toolkit` (registry + handler wiring), `LanguageModel` (driver) — are deliberately separable. Read `docs/architecture.md` before refactoring across the boundary.
+
+## Testing
+
+Two tiers, both run by Vitest under Node via `@effect/vitest`:
+
+- **Handler-direct** (`test/tools/*.test.ts`) — call the handler function directly. No model, no toolkit machinery. Fast. Most coverage lives here.
+- **Toolkit-via-mock** (`test/toolkit.test.ts`) — drive `LanguageModel.generateText` with a scripted mock model that emits scripted tool-call parts. Verifies the toolkit dispatches and reports correctly.
+
+We do **not** hit real LLMs in CI. See `docs/testing-strategy.md` for the rationale.
+
+### Writing tests
+
+```typescript
+import { it } from "@effect/vitest";
+import { expect } from "vitest";
+import * as Effect from "effect/Effect";
+import { withTmpDir, mockToolCall, runToolkit } from "../utilities.ts";
+
+// Handler-direct: call the handler, assert on the returned Effect.
+it.effect("edit rewrites the file in place", () =>
+  withTmpDir("edit", (dir) =>
+    Effect.gen(function* () {
+      // ... write a file, call editHandler, assert contents
+    }),
+  ),
+);
+
+// Toolkit-via-mock: script the model, run through generateText.
+it.effect("toolkit dispatches a read call and reports its output", () =>
+  runToolkit({
+    prompt: "read foo.txt",
+    parts: [mockToolCall("read", { path: "/tmp/foo.txt" })],
+  }).pipe(Effect.tap((result) => Effect.sync(() => expect(result.text).toContain("hello")))),
+);
+```
+
+- Use `it.effect(...)` from `@effect/vitest`, **not** plain `it(...)`. It runs the returned Effect for you.
+- Use `withTmpDir` / `withTmpFile` from `test/utilities.ts` for filesystem tests — they clean up via `Effect.acquireUseRelease` even on failure. Do **not** call `fs.mkdtempSync` directly.
+- For failure assertions use `Effect.either` + `expectLeft(result, "ExpectedTag")` from `test/utilities.ts`. Don't try/catch tagged errors.
+- Mock model responses with `mockText` and `mockToolCall` — they produce the kebab-case `Response.PartEncoded` shape `@effect/ai` expects, not pi's camelCase.
+- **CRITICAL**: Do not write flaky tests. Do not use `setTimeout`. `await` the condition, not the clock.
+
+## Code review self-check
+
+- Before writing code that makes a non-obvious choice, pre-emptively ask "why this and not the alternative?" If you can't answer, research until you can — don't write first and justify later.
+- If neighboring code does something differently than you're about to, find out _why_ before deviating. Its choices are often load-bearing, not stylistic.
+- Don't take a bug report's suggested fix at face value — verify it's the right layer.
+- Effect machinery is the right answer for control flow, error handling, and resource management in this repo. If you're reaching for try/catch or raw promises in `src/`, step back and check the existing patterns first.
+
+## Important development notes
+
+1. **Read `docs/index.md` before touching code.** It's injected at session start by `inject-docs.sh`, so it's already in your context — but it lists files you still need to open.
+2. **Run `bun run check` before declaring done.** Typecheck, lint, format, and tests must all pass.
+3. **All changes must be tested.** Add a handler-direct test for tool behavior, a toolkit-level test if it affects dispatch.
+4. **Follow neighboring patterns.** Check the sibling tool file before adding a new one. `Tool.make` spec + handler function — same shape every time.
+5. **Do not edit `repos/`.** Vendored source is read-only reference material.
+6. **Do not hand-edit `docs/plans/index.md`.** It is auto-rebuilt by the `auto-index-docs.sh` PostToolUse hook.
+7. **Use absolute paths** in tool calls and tests.
+8. **`@effect/ai` gotchas are documented.** Before debugging weird Effect/AI behavior, scan `docs/patterns/effect-ai-gotchas.md` — `failureMode: "return"`, Layer scoping, and the internal turn loop have all caught us already.
+9. **Be humble and honest.** Never overstate what works in commits, PRs, or messages to the user.
+
 ## Persistent memory: `docs/`
 
 `docs/` doubles as the project wiki **and** the agent's long-term memory. Treat it as the vault — read first, write after corrections or notable learnings.
 
-- **Read first.** `docs/index.md` is injected at session start by `inject-docs.sh`. Skim it, then read the files relevant to the task.
-- **Principles.** `docs/principles.md` indexes engineering principles under `docs/principles/`. Refer back when planning, reviewing, or debugging.
-- **Plans.** `docs/plans/` holds phased implementation plans (one directory per plan with `overview.md` + phase files, or a single file). `docs/plans/index.md` is auto-rebuilt by `auto-index-docs.sh` — do not hand-edit.
+- **Plans.** `docs/plans/` holds phased implementation plans (one directory per plan with `overview.md` + phase files, or a single file). `docs/plans/index.md` is auto-rebuilt — do not hand-edit.
 - **Write after learnings.** Mistakes, corrections, gotchas, non-obvious decisions → route to the right place: principle (`docs/principles/`), gotcha (`docs/patterns/`), recipe (`docs/guides/`), backlog item (`docs/backlog.md`), or skill update (`.agents/skills/<skill>/`).
 - **Curated landing page.** `docs/index.md` is hand-maintained. Only edit when a new entry deserves a top-level mention.
 
-### Skills
-
-Slash commands installed under `.agents/skills/`:
-
-- `/reflect` — manual deep pass over the conversation. Captures learnings into `docs/` or skill files. Complements the automatic Stop hook below.
-- `/brain` — read/write conventions for the `docs/` vault.
-- `/meditate` — audit `docs/` for staleness, redundancy, unstated principles.
-- `/ruminate` — mine past Claude Code conversation history for uncaptured patterns.
-
-### Hooks
-
-- **SessionStart** (`inject-docs.sh`) — dumps `docs/index.md` and `docs/principles.md` so the agent sees the vault upfront.
-- **PostToolUse** (`auto-index-docs.sh`) — rebuilds `docs/plans/index.md` on drift. Exits fast when nothing changed.
-- **Stop** (`docs-reflection.sh`) — after meaningful sessions (≥5 tool calls), prompts the agent to consider whether anything is worth adding to `docs/`.

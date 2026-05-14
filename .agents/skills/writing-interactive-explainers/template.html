@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- EDIT: title (also update <h1> below) -->
+    <title>An Interactive Guide to <Topic></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://esm.sh" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet" />
+    <style>
+      :root {
+        --bg:            #0b0d12;
+        --bg-elev:       #11141b;
+        --bg-card:       #161a23;
+        --bg-card-2:     #1c2230;
+        --border:        #262c3a;
+        --border-strong: #3a4256;
+        --text:          #e7ecf3;
+        --text-dim:      #9aa3b2;
+        --text-faint:    #6c7484;
+        --accent:        #c4b5fd;
+        --accent-strong: #a78bfa;
+        --hot:           #fbbf24;
+        --good:          #4ade80;
+        --bad:           #f87171;
+        --code-bg:       #0f1219;
+      }
+      * { box-sizing: border-box; }
+      html, body { background: var(--bg); }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        font-size: 17px;
+        line-height: 1.65;
+      }
+      code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      a { color: var(--accent-strong); text-decoration: none; border-bottom: 1px solid rgba(167,139,250,0.3); }
+      a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+      header.hero {
+        padding: 80px 32px 40px;
+        max-width: 920px;
+        margin: 0 auto;
+        background:
+          radial-gradient(ellipse 800px 280px at 50% -80px, rgba(167,139,250,0.18), transparent 60%),
+          radial-gradient(ellipse 600px 200px at 80% 0px, rgba(251,191,36,0.08), transparent 60%);
+      }
+      header.hero h1 {
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.1;
+        margin: 0 0 16px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        background: linear-gradient(180deg, #ffffff 0%, #c4b5fd 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      header.hero p.kicker {
+        font-size: 19px;
+        color: var(--text-dim);
+        margin: 0;
+        max-width: 640px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 240px;
+        gap: 64px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 40px 32px 120px;
+      }
+      @media (max-width: 900px) {
+        .layout { grid-template-columns: 1fr; }
+        nav.toc { display: none; }
+      }
+      main { max-width: 720px; min-width: 0; }
+      main h2 {
+        color: var(--accent);
+        font-size: 32px;
+        font-weight: 600;
+        margin: 72px 0 12px;
+        letter-spacing: -0.01em;
+      }
+      main h2:first-child { margin-top: 0; }
+      main h3 { font-size: 22px; margin: 40px 0 8px; font-weight: 600; color: var(--text); }
+      main p { margin: 0 0 18px; }
+      main p code, main li code {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        padding: 1px 7px;
+        border-radius: 6px;
+        font-size: 0.88em;
+        color: #f0e7ff;
+      }
+      main ul { padding-left: 22px; }
+      main li { margin-bottom: 6px; }
+
+      nav.toc {
+        position: sticky;
+        top: 40px;
+        align-self: start;
+        font-size: 14px;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+      nav.toc h4 {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        margin: 0 0 12px;
+      }
+      nav.toc a {
+        display: block;
+        color: var(--text-dim);
+        border: none;
+        padding: 4px 0;
+      }
+      nav.toc a.active { color: var(--accent); }
+      nav.toc a:hover { color: var(--text); }
+
+      /* Markdown fenced code blocks (rendered by marked, highlighted by Shiki) */
+      main pre code,
+      main pre {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      main pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 18px;
+        overflow-x: auto;
+        margin: 16px 0 24px;
+      }
+
+      /* Shiki output */
+      .shiki-wrap {
+        margin: 0;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: var(--code-bg);
+        min-width: 0;
+        max-width: 100%;
+      }
+      .shiki-wrap pre.shiki {
+        margin: 0 !important;
+        padding: 16px 18px !important;
+        background: transparent !important;
+        font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+        font-size: 14px;
+        line-height: 1.6;
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .shiki, .shiki span { background-color: transparent !important; }
+
+      /* Demo card */
+      .demo {
+        margin: 24px 0 32px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .demo .label {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 6px;
+      }
+      .demo .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .demo .controls label {
+        font-size: 13px;
+        color: var(--text-dim);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .demo input[type="text"], .demo select {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 6px 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        min-width: 140px;
+      }
+      .demo input[type="text"]:focus, .demo select:focus { outline: none; border-color: var(--accent-strong); }
+
+      .toggle {
+        position: relative;
+        display: inline-flex;
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .toggle button {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-dim);
+        font-family: inherit;
+        font-size: 13px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: color 0.18s;
+      }
+      .toggle button.on { color: #1a1330; font-weight: 600; }
+      .toggle button:hover:not(.on) { color: var(--text); }
+      .toggle .pill {
+        position: absolute;
+        z-index: 0;
+        top: 3px;
+        bottom: 3px;
+        background: var(--accent-strong);
+        border-radius: 6px;
+      }
+
+      .demo button.primary {
+        background: var(--hot);
+        color: #2a1d05;
+        border: none;
+        font-weight: 600;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .demo button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      .demo button.primary:hover:not(:disabled) { filter: brightness(1.05); }
+      .demo button.ghost {
+        background: var(--bg-card-2);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        font-family: inherit;
+        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .demo button.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+
+      .panel-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .panel-grid > * { min-width: 0; }
+      @media (max-width: 640px) { .panel-grid { grid-template-columns: 1fr; } }
+
+      .panel {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 13px;
+        font-family: 'JetBrains Mono', monospace;
+        min-height: 120px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.55;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.04em;
+        border-radius: 5px;
+        text-transform: uppercase;
+        vertical-align: middle;
+      }
+      .badge.ok   { color: #adfac4; background: rgba(74,222,128,0.14); border: 1px solid rgba(74,222,128,0.4); }
+      .badge.fail { color: #fecaca; background: rgba(248,113,113,0.14); border: 1px solid rgba(248,113,113,0.5); }
+      .badge.mute { color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+
+      .step-line {
+        display: flex;
+        gap: 12px;
+        padding: 9px 0;
+        border-top: 1px dashed var(--border);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        align-items: flex-start;
+      }
+      .step-line:first-child { border-top: none; }
+      .step-line .step-num { min-width: 28px; color: var(--text-faint); }
+      .step-line .step-body { flex: 1; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+      .stack-row {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+      .stack-tag {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--accent);
+        text-align: right;
+      }
+      .stack-box {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent-strong);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .stack-box.t-hot   { border-left-color: var(--hot); }
+      .stack-box.t-kit   { border-left-color: var(--accent-strong); }
+      .stack-box.t-model { border-left-color: var(--good); }
+      .stack-arrow {
+        text-align: center;
+        color: var(--text-faint);
+        font-size: 13px;
+        margin: -4px 0;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      footer {
+        max-width: 720px;
+        margin: 60px auto 100px;
+        padding: 32px;
+        color: var(--text-faint);
+        font-size: 14px;
+        text-align: center;
+      }
+      .hl { color: var(--hot); font-weight: 500; }
+      .hl-purple { color: var(--accent); font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <!-- EDIT: title -->
+      <h1>An Interactive Guide to &lt;Topic&gt;</h1>
+      <!-- EDIT: subtitle — one sentence, the hook the reader sees first -->
+      <p class="kicker">
+        A one-sentence hook in Josh Comeau's voice. Hint at the surprise the
+        reader will get, don't summarize the article.
+      </p>
+    </header>
+
+    <div class="layout">
+      <main id="main">
+
+        <!--
+          ============================================================
+          EDIT: body — replace everything between <main> and </main>.
+          Below is one fully-worked example section per demo kind.
+          Keep, modify, or delete each as you write. Each section is:
+            <h2 id="slug">Title</h2>
+            <p>Opening hook + prose (see voice.md)</p>
+            <div class="demo-mount" data-kind="..." data-props='...'></div>
+            <p>Why-it-matters paragraph after the demo</p>
+          ============================================================
+        -->
+
+        <h2 id="big-picture">The big picture</h2>
+        <p>
+          Here's the strange thing about an Effect-AI agent: it's <em>almost
+          entirely</em> three primitives, stacked. Once you see that — really see
+          it — the rest of the library stops feeling like magic.
+        </p>
+
+        <div class="demo-mount" data-kind="stack">
+          <script type="application/json">
+            {
+              "rows": [
+                { "tag": "Tool",          "desc": "a typed spec for one capability",    "tint": "hot"   },
+                { "tag": "Toolkit",       "desc": "a record of tools + their handlers", "tint": "kit"   },
+                { "tag": "LanguageModel", "desc": "drives one model call",              "tint": "model" }
+              ],
+              "arrows": ["composed by", "consumed by"]
+            }
+          </script>
+        </div>
+
+        <p>
+          <strong>That's it. That's the whole conceptual model.</strong>
+          Everything else — the JSON Schema generation, the parallel tool
+          dispatch, the failure encoding — is the library doing its job so you
+          don't have to.
+        </p>
+
+        <h2 id="layer-tool">Layer 1 — Tool</h2>
+        <p>
+          A <code>Tool</code> is just metadata. <em>Really.</em> I know that
+          sounds like a deflection, but stick with me — this was the thing that
+          took me longest to internalize.
+        </p>
+
+        <div class="demo-mount" data-kind="side-by-side">
+          <script type="application/json">
+            {
+              "inputs": [
+                { "name": "toolName", "type": "text",   "default": "read",  "label": "name" },
+                { "name": "param",    "type": "text",   "default": "path",  "label": "param" },
+                { "name": "kind",     "type": "select", "options": ["String","Number","Boolean"], "default": "String", "label": "type" }
+              ],
+              "leftLang":      "ts",
+              "leftLabel":     "Your Tool.make spec",
+              "leftTemplate":  "Tool.make(\"{toolName}\", {\n  parameters: { {param}: Schema.{kind} },\n  success: Schema.String,\n})",
+              "rightLang":     "json",
+              "rightLabel":    "What the model sees",
+              "rightTemplate": "{\n  \"name\": \"{toolName}\",\n  \"input_schema\": {\n    \"type\": \"object\",\n    \"properties\": { \"{param}\": { \"type\": \"{kind:lower}\" } }\n  }\n}"
+            }
+          </script>
+        </div>
+
+        <p>
+          The first time I saw this, I assumed I was missing something. Surely
+          <em>somewhere</em> I have to wire the spec to the actual code? You do
+          — but that wiring lives one layer up.
+        </p>
+
+        <h2 id="layer-toolkit">Layer 2 — Toolkit</h2>
+        <p>
+          OK, so we've got specs. Specs don't <em>do</em> anything. Time to
+          give them implementations. Toggle a tool on or off and watch both
+          halves of the wiring update in lockstep:
+        </p>
+
+        <div class="demo-mount" data-kind="checklist-grid">
+          <script type="application/json">
+            {
+              "items": [
+                { "name": "read",  "handler": "readHandler",  "default": true  },
+                { "name": "write", "handler": "writeHandler", "default": true  },
+                { "name": "edit",  "handler": "editHandler",  "default": true  },
+                { "name": "bash",  "handler": "bashHandler",  "default": false },
+                { "name": "glob",  "handler": "globHandler",  "default": true  },
+                { "name": "grep",  "handler": "grepHandler",  "default": false }
+              ],
+              "leftLang":   "ts",
+              "leftLabel":  "src/toolkit.ts",
+              "leftItem":   "  {Name}Tool,",
+              "leftWrap":   "export const HarnessToolkit = Toolkit.make(\n{ITEMS}\n);",
+              "rightLang":  "ts",
+              "rightLabel": ".toLayer — the handler record",
+              "rightItem":  "    {name}: {handler},",
+              "rightWrap":  "export const HarnessToolkitLayer =\n  HarnessToolkit.toLayer({\n{ITEMS}\n  });"
+            }
+          </script>
+        </div>
+
+        <p>
+          <strong>The handler record's type is derived from the
+          <code>Toolkit.make</code> call.</strong> Rename a tool, forget a
+          handler, pass the wrong shape — TypeScript stops compiling. The check
+          is baked into the type system, and you get it for free.
+        </p>
+
+        <h2 id="failure-mode">The failureMode trap</h2>
+        <p>
+          OK. Real talk. This one bit me, and I want to spare you the same hour
+          I lost.
+        </p>
+
+        <div class="demo-mount" data-kind="toggle-compare">
+          <script type="application/json">
+            {
+              "label": "timeline of one tool call that fails",
+              "options": [
+                { "value": "return", "label": "failureMode: \"return\"" },
+                { "value": "error",  "label": "failureMode: \"error\" (default)" }
+              ],
+              "variants": {
+                "return": [
+                  { "num": "1.", "body": "model emits a failing <code>tool_use</code>" },
+                  { "num": "2.", "body": "framework catches the failure (because \"return\")" },
+                  { "num": "3.", "body": "encodes <code>isFailure: true</code> into the response" },
+                  { "num": "4.", "body": "<span class='badge ok'>turn survives</span> — model can recover" }
+                ],
+                "error": [
+                  { "num": "1.", "body": "model emits a failing <code>tool_use</code>" },
+                  { "num": "2.", "body": "framework does <em>not</em> catch (default)" },
+                  { "num": "3.", "body": "failure escapes <code>generateText</code>" },
+                  { "num": "4.", "body": "<span class='badge fail'>turn dies</span>" }
+                ]
+              }
+            }
+          </script>
+        </div>
+
+        <p>
+          Notice which one feels like an <em>agent</em> and which one feels
+          like a 500. Set <code>failureMode: "return"</code> whenever you
+          declare a non-<code>Never</code> failure schema. The two go together.
+        </p>
+
+        <h2 id="turn-loop">Inside one turn</h2>
+        <p>
+          Let's slow down and watch what actually happens between the moment you
+          write <code>yield* generateText(...)</code> and the moment the Effect
+          resolves. Hit play, or step through manually:
+        </p>
+
+        <div class="demo-mount" data-kind="step-through">
+          <script type="application/json">
+            {
+              "label": "one generateText call, step by step",
+              "steps": [
+                { "num": "1.", "body": "your code: <code>yield* generateText({ prompt, toolkit })</code>" },
+                { "num": "2.", "body": "framework calls Anthropic once, gets <span class='badge mute'>text + tool_use</span>" },
+                { "num": "3.", "body": "<code>Toolkit.handle</code> decodes params, dispatches by name" },
+                { "num": "4.", "body": "your <code>readHandler</code> runs, returns <code>\"my-laptop\\n\"</code>" },
+                { "num": "5.", "body": "framework encodes a <span class='badge mute'>tool_result</span> back into the response" },
+                { "num": "6.", "body": "<span class='badge ok'>returned</span> <code>GenerateTextResponse</code>" }
+              ]
+            }
+          </script>
+        </div>
+
+        <p>
+          Take a second to notice what <em>didn't</em> happen there. The model
+          was never called a second time. <code>generateText</code> is a single
+          round-trip plus intra-call tool dispatch — it isn't the agent loop.
+        </p>
+
+        <h2 id="you-made-it">You made it</h2>
+        <p>
+          That's it. <em>Really.</em> Three layers — <code>Tool</code>,
+          <code>Toolkit</code>, <code>LanguageModel</code> — and once you've
+          internalized that split, every file in <code>src/</code> is just an
+          instance of one of them. The library has no hidden cleverness past
+          this point. Just composition.
+        </p>
+
+      </main>
+      <nav class="toc" id="toc">
+        <h4>Table of Contents</h4>
+        <!-- EDIT: toc — one <a> per <h2>, href must match h2 id -->
+        <a href="#big-picture">The big picture</a>
+        <a href="#layer-tool">Layer 1 — Tool</a>
+        <a href="#layer-toolkit">Layer 2 — Toolkit</a>
+        <a href="#failure-mode">The failureMode trap</a>
+        <a href="#turn-loop">Inside one turn</a>
+        <a href="#you-made-it">You made it</a>
+      </nav>
+    </div>
+
+    <footer>
+      <!-- EDIT (optional): credits / source links -->
+      An interactive explainer.
+    </footer>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react":            "https://esm.sh/react@18.3.1",
+          "react-dom":        "https://esm.sh/react-dom@18.3.1?deps=react@18.3.1",
+          "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1",
+          "react/jsx-runtime":"https://esm.sh/react@18.3.1/jsx-runtime",
+          "framer-motion":    "https://esm.sh/framer-motion@11.11.17?deps=react@18.3.1,react-dom@18.3.1",
+          "shiki":            "https://esm.sh/shiki@1.24.0"
+        }
+      }
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel" data-type="module" data-presets="react">
+      import React, { useState, useEffect, useMemo } from "react";
+      import { createRoot } from "react-dom/client";
+      import { motion, LayoutGroup } from "framer-motion";
+      import { codeToHtml } from "shiki";
+
+      // ---------- Shiki cache + code block ----------
+      const shikiCache = new Map();
+      function highlight(code, lang) {
+        const key = `${lang}::${code}`;
+        if (!shikiCache.has(key)) {
+          shikiCache.set(
+            key,
+            codeToHtml(code, { lang, theme: "github-dark-dimmed" }).catch(
+              () => `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`
+            )
+          );
+        }
+        return shikiCache.get(key);
+      }
+      function escapeHtml(s) {
+        return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      }
+      function ShikiBlock({ code, lang }) {
+        const [html, setHtml] = useState(null);
+        useEffect(() => {
+          let alive = true;
+          highlight(code, lang).then((h) => { if (alive) setHtml(h); });
+          return () => { alive = false; };
+        }, [code, lang]);
+        return html
+          ? <div className="shiki-wrap" dangerouslySetInnerHTML={{ __html: html }} />
+          : <pre className="shiki-wrap"><code>{code}</code></pre>;
+      }
+
+      // ---------- shared bits ----------
+      function Toggle({ value, options, onChange, groupId }) {
+        return (
+          <LayoutGroup id={groupId}>
+            <div className="toggle">
+              {options.map((opt) => {
+                const active = value === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    className={active ? "on" : ""}
+                    onClick={() => onChange(opt.value)}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="toggle-pill"
+                        className="pill"
+                        style={{ left: 3, right: 3 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </LayoutGroup>
+        );
+      }
+
+      // Interpolate {name} and {name:lower|upper} from a record of values.
+      function interpolate(template, vars) {
+        return template.replace(/\{(\w+)(?::(lower|upper))?\}/g, (_m, name, mod) => {
+          const v = vars[name];
+          if (v === undefined || v === null) return "";
+          const s = String(v);
+          if (mod === "lower") return s.toLowerCase();
+          if (mod === "upper") return s.toUpperCase();
+          return s;
+        });
+      }
+
+      // ---------- Demo 1: Stack ----------
+      function StackDemo({ rows, arrows }) {
+        return (
+          <div className="demo">
+            <div style={{ display: "grid", gap: 10 }}>
+              {rows.map((row, i) => (
+                <React.Fragment key={i}>
+                  <div className="stack-row">
+                    <div className="stack-tag">{row.tag}</div>
+                    <div className={`stack-box t-${row.tint || "kit"}`}>{row.desc}</div>
+                  </div>
+                  {i < rows.length - 1 && (
+                    <div className="stack-arrow">
+                      ▲ {arrows && arrows[i] ? arrows[i] : ""}
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 2: Side-by-side ----------
+      function SideBySideDemo({ inputs, leftLang, leftLabel, leftTemplate, rightLang, rightLabel, rightTemplate }) {
+        const initial = Object.fromEntries(inputs.map((i) => [i.name, i.default]));
+        const [vals, setVals] = useState(initial);
+        const left = interpolate(leftTemplate, vals);
+        const right = typeof rightTemplate === "string"
+          ? interpolate(rightTemplate, vals)
+          : JSON.stringify(rightTemplate, null, 2);
+        return (
+          <div className="demo">
+            <div className="controls">
+              {inputs.map((inp) => (
+                <label key={inp.name}>
+                  {inp.label || inp.name}{" "}
+                  {inp.type === "select" ? (
+                    <select value={vals[inp.name]} onChange={(e) => setVals({ ...vals, [inp.name]: e.target.value })}>
+                      {inp.options.map((o) => <option key={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input type="text" value={vals[inp.name]} onChange={(e) => setVals({ ...vals, [inp.name]: e.target.value })} />
+                  )}
+                </label>
+              ))}
+            </div>
+            <div className="panel-grid">
+              <div>
+                {leftLabel && <div className="label">{leftLabel}</div>}
+                <ShikiBlock code={left} lang={leftLang || "ts"} />
+              </div>
+              <div>
+                {rightLabel && <div className="label">{rightLabel}</div>}
+                <ShikiBlock code={right} lang={rightLang || "json"} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 3: Step-through ----------
+      function StepThroughDemo({ label, steps }) {
+        const max = steps.length;
+        const [step, setStep] = useState(0);
+        const [auto, setAuto] = useState(false);
+
+        useEffect(() => {
+          if (!auto) return;
+          if (step >= max) { setAuto(false); return; }
+          const id = setTimeout(() => setStep((s) => Math.min(s + 1, max)), 700);
+          return () => clearTimeout(id);
+        }, [auto, step, max]);
+
+        return (
+          <div className="demo">
+            <div className="controls">
+              <button className="primary" onClick={() => { setStep(0); setAuto(true); }}>▶ Play</button>
+              <button className="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))}>‹ back</button>
+              <button className="ghost" onClick={() => setStep((s) => Math.min(max, s + 1))}>next ›</button>
+              <button className="ghost" onClick={() => { setStep(0); setAuto(false); }}>↺ reset</button>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>
+                step {step} / {max}
+              </span>
+            </div>
+            <div className="panel">
+              {label && <div className="label">{label}</div>}
+              {steps.map((s, idx) => (
+                <motion.div
+                  key={idx}
+                  className="step-line"
+                  initial={false}
+                  animate={{ opacity: step > idx ? 1 : 0.18, y: step > idx ? 0 : 4 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 28 }}
+                >
+                  <div className="step-num">{s.num}</div>
+                  <div className="step-body" dangerouslySetInnerHTML={{ __html: s.body }} />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 4: Toggle-compare ----------
+      function ToggleCompareDemo({ label, options, variants }) {
+        const [mode, setMode] = useState(options[0].value);
+        const [step, setStep] = useState(0);
+        const [auto, setAuto] = useState(false);
+        const steps = variants[mode] || [];
+        const max = steps.length;
+
+        useEffect(() => {
+          if (!auto) return;
+          if (step >= max) { setAuto(false); return; }
+          const id = setTimeout(() => setStep((s) => Math.min(s + 1, max)), 700);
+          return () => clearTimeout(id);
+        }, [auto, step, max]);
+
+        const reset = () => { setStep(0); setAuto(false); };
+        const groupId = useMemo(() => "tg-" + Math.random().toString(36).slice(2, 7), []);
+
+        return (
+          <div className="demo">
+            <div className="controls">
+              <Toggle
+                groupId={groupId}
+                value={mode}
+                options={options}
+                onChange={(v) => { setMode(v); reset(); }}
+              />
+              <button className="primary" onClick={() => { setStep(0); setAuto(true); }}>▶ Play</button>
+              <button className="ghost" onClick={reset}>↺ reset</button>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>
+                step {step} / {max}
+              </span>
+            </div>
+            <div className="panel">
+              {label && <div className="label">{label}</div>}
+              {steps.map((s, idx) => (
+                <motion.div
+                  key={mode + "-" + idx}
+                  className="step-line"
+                  initial={false}
+                  animate={{ opacity: step > idx ? 1 : 0.18, y: step > idx ? 0 : 4 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 28 }}
+                >
+                  <div className="step-num">{s.num}</div>
+                  <div className="step-body" dangerouslySetInnerHTML={{ __html: s.body }} />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 5: Checklist-grid ----------
+      function ChecklistGridDemo({ items, leftLang, leftLabel, leftItem, leftWrap, rightLang, rightLabel, rightItem, rightWrap }) {
+        const initial = Object.fromEntries(items.map((it) => [it.name, !!it.default]));
+        const [on, setOn] = useState(initial);
+        const enabled = items.filter((it) => on[it.name]);
+
+        const render = (itemTpl, wrapTpl) => {
+          const lines = enabled.map((it) => {
+            const vars = { ...it, Name: it.name.charAt(0).toUpperCase() + it.name.slice(1) };
+            return interpolate(itemTpl, vars);
+          });
+          return interpolate(wrapTpl, { ITEMS: lines.join("\n") });
+        };
+        const left = render(leftItem, leftWrap);
+        const right = render(rightItem, rightWrap);
+
+        return (
+          <div className="demo">
+            <div className="controls">
+              {items.map((it) => (
+                <label key={it.name}>
+                  <input
+                    type="checkbox"
+                    checked={!!on[it.name]}
+                    onChange={(e) => setOn({ ...on, [it.name]: e.target.checked })}
+                  />
+                  {it.name}
+                </label>
+              ))}
+            </div>
+            <div className="panel-grid">
+              <div>
+                {leftLabel && <div className="label">{leftLabel}</div>}
+                <ShikiBlock code={left} lang={leftLang || "ts"} />
+              </div>
+              <div>
+                {rightLabel && <div className="label">{rightLabel}</div>}
+                <ShikiBlock code={right} lang={rightLang || "ts"} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Mount: find every .demo-mount and render the right kind ----------
+      const REGISTRY = {
+        "stack":          StackDemo,
+        "side-by-side":   SideBySideDemo,
+        "step-through":   StepThroughDemo,
+        "toggle-compare": ToggleCompareDemo,
+        "checklist-grid": ChecklistGridDemo,
+      };
+
+      // Each <div class="demo-mount" data-kind="..."> contains a
+      // <script type="application/json"> with the props as raw JSON. The
+      // script-tag pattern means authors don't have to HTML-escape anything
+      // (no &quot;, no &#39;) — they just write JSON.
+      function mountAll() {
+        document.querySelectorAll(".demo-mount").forEach((el) => {
+          if (el.dataset.mounted === "yes") return;
+          const kind = el.dataset.kind;
+          const Comp = REGISTRY[kind];
+          if (!Comp) {
+            el.innerHTML = `<div class="demo" style="color: var(--bad)">unknown demo kind: ${kind}</div>`;
+            return;
+          }
+          const script = el.querySelector("script[type='application/json']");
+          if (!script) {
+            el.innerHTML = `<div class="demo" style="color: var(--bad)">missing &lt;script type="application/json"&gt; inside demo-mount</div>`;
+            return;
+          }
+          let props;
+          try {
+            props = JSON.parse(script.textContent || "{}");
+          } catch (e) {
+            el.innerHTML = `<div class="demo" style="color: var(--bad)">invalid demo props JSON: ${e.message}</div>`;
+            return;
+          }
+          // React will replace children; remove the script first to be tidy.
+          script.remove();
+          createRoot(el).render(<Comp {...props} />);
+          el.dataset.mounted = "yes";
+        });
+      }
+
+      // Also highlight any plain <pre><code class="language-..."> blocks that
+      // marked emitted from the markdown body.
+      async function highlightFencedCodeBlocks() {
+        const blocks = document.querySelectorAll("main pre > code[class*='language-']");
+        for (const code of blocks) {
+          const langMatch = code.className.match(/language-([\w-]+)/);
+          const lang = langMatch ? langMatch[1] : "text";
+          const src = code.textContent || "";
+          const pre = code.parentElement;
+          try {
+            const html = await codeToHtml(src, { lang, theme: "github-dark-dimmed" });
+            const wrap = document.createElement("div");
+            wrap.className = "shiki-wrap";
+            wrap.innerHTML = html;
+            pre.replaceWith(wrap);
+          } catch {
+            // leave as-is on failure
+          }
+        }
+      }
+
+      // Scroll-spy for the TOC
+      function setupScrollSpy() {
+        const headings = Array.from(document.querySelectorAll("main h2[id]"));
+        const tocLinks = Array.from(document.querySelectorAll("nav.toc a"));
+        if (headings.length === 0 || tocLinks.length === 0) return;
+        const obs = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                tocLinks.forEach((l) => l.classList.remove("active"));
+                const id = e.target.getAttribute("id");
+                const link = tocLinks.find((l) => l.getAttribute("href") === `#${id}`);
+                if (link) link.classList.add("active");
+              }
+            });
+          },
+          { rootMargin: "-30% 0px -60% 0px" }
+        );
+        headings.forEach((h) => obs.observe(h));
+      }
+
+      mountAll();
+      highlightFencedCodeBlocks();
+      setupScrollSpy();
+    </script>
+  </body>
+</html>

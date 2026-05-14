@@ -47,6 +47,13 @@ The squashed upstreams live at:
 This is also why the linters and formatters carry explicit `repos/**`
 ignore patterns — see [tooling](./tooling.md).
 
+### Reference notes distilled from `repos/`
+
+- **[Pi's API key resolution](./patterns/pi-api-key-resolution.md)** —
+  three-layer priority (CLI override → `auth.json` → env var) and the
+  `!cmd` / env-name / literal indirection in the `key` field. Read
+  before designing multi-provider auth.
+
 ---
 
 ## Quick orientation by file
