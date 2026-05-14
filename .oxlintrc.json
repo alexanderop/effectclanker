@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+  "jsPlugins": ["./.oxlint/effect-rules.mjs"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
@@ -11,6 +12,15 @@
     "nursery": "off"
   },
   "rules": {
+    "effect/no-disable-validation": "error",
+    "effect/prefer-option-from-nullable": "error",
+    "effect/pipe-max-arguments": "error",
+    "effect/no-effect-asvoid": "error",
+    "effect/no-effect-ignore": "error",
+    "effect/no-effect-catchallcause": "error",
+    "effect/no-silent-error-swallow": "error",
+    "effect/no-service-option": "error",
+    "effect/no-nested-layer-provide": "error",
     "no-underscore-dangle": ["warn", { "allow": ["_tag", "_op"] }],
     "no-console": "off",
     "typescript/no-explicit-any": "error",

@@ -36,9 +36,12 @@ The harness wires six tools (`read`, `write`, `edit`, `bash`, `grep`, `glob`) in
 
 ## Before you change anything
 
-**Read `docs/index.md` first.** It is the wiki landing page and the load-bearing entry point for everything in this repo. Skim it, identify which linked files are relevant to your task, then read those before touching code.
+The `docs/` directory is the project vault — persistent memory across sessions.
 
-The most-touched ones, by frequency:
+- `docs/index.md` is the auto-generated vault map. It's injected at session start, so you already see what knowledge is available. Read the relevant entries before acting.
+- `docs/overview.md` is the curated landing page — the "start here, in order" reading list plus reference-repo notes.
+
+The most-touched files, by frequency:
 
 - `docs/architecture.md` — the three layers (`Tool` / `Toolkit` / `LanguageModel`), where each one lives, how a prompt becomes a response.
 - `docs/guides/adding-a-tool.md` — the recipe for the most common task in this codebase.
@@ -125,12 +128,12 @@ it.effect("toolkit dispatches a read call and reports its output", () =>
 
 ## Important development notes
 
-1. **Read `docs/index.md` before touching code.** It's injected at session start by `inject-docs.sh`, so it's already in your context — but it lists files you still need to open.
+1. **The `docs/index.md` vault map is injected at session start** by `inject-docs.sh`, so it's already in your context — but it lists files you still need to open.
 2. **Run `bun run check` before declaring done.** Typecheck, lint, format, and tests must all pass.
 3. **All changes must be tested.** Add a handler-direct test for tool behavior, a toolkit-level test if it affects dispatch.
 4. **Follow neighboring patterns.** Check the sibling tool file before adding a new one. `Tool.make` spec + handler function — same shape every time.
 5. **Do not edit `repos/`.** Vendored source is read-only reference material.
-6. **Do not hand-edit `docs/plans/index.md`.** It is auto-rebuilt by the `auto-index-docs.sh` PostToolUse hook.
+6. **Do not hand-edit `docs/index.md`.** It is auto-rebuilt by the `auto-index-docs.sh` PostToolUse hook — a bare wikilink map, no descriptions. Curated narrative lives in `docs/overview.md` and topic files.
 7. **Use absolute paths** in tool calls and tests.
 8. **`@effect/ai` gotchas are documented.** Before debugging weird Effect/AI behavior, scan `docs/patterns/effect-ai-gotchas.md` — `failureMode: "return"`, Layer scoping, and the internal turn loop have all caught us already.
 9. **Be humble and honest.** Never overstate what works in commits, PRs, or messages to the user.
@@ -139,7 +142,8 @@ it.effect("toolkit dispatches a read call and reports its output", () =>
 
 `docs/` doubles as the project wiki **and** the agent's long-term memory. Treat it as the vault — read first, write after corrections or notable learnings.
 
-- **Plans.** `docs/plans/` holds phased implementation plans (one directory per plan with `overview.md` + phase files, or a single file). `docs/plans/index.md` is auto-rebuilt — do not hand-edit.
+- **Vault map.** `docs/index.md` is auto-rebuilt by `auto-index-docs.sh` from filesystem state — bare `[[wikilinks]]` grouped by top-level directory. Do not hand-edit.
+- **Curated landing.** `docs/overview.md` holds the "start here, in order" reading list and reference-repo notes. Edit when a new entry deserves prominent mention.
+- **Plans.** `docs/plans/` holds phased implementation plans (one directory per plan with `overview.md` + phase files, or a single file).
 - **Write after learnings.** Mistakes, corrections, gotchas, non-obvious decisions → route to the right place: principle (`docs/principles/`), gotcha (`docs/patterns/`), recipe (`docs/guides/`), backlog item (`docs/backlog.md`), or skill update (`.agents/skills/<skill>/`).
-- **Curated landing page.** `docs/index.md` is hand-maintained. Only edit when a new entry deserves a top-level mention.
 

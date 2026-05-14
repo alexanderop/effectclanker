@@ -367,6 +367,201 @@
       }
       .hl { color: var(--hot); font-weight: 500; }
       .hl-purple { color: var(--accent); font-weight: 500; }
+
+      /* Callout / aside — used as <aside class="callout"> directly in the body */
+      aside.callout {
+        margin: 20px 0 24px;
+        padding: 14px 18px 14px 20px;
+        border-left: 3px solid var(--accent-strong);
+        background: rgba(167, 139, 250, 0.07);
+        border-radius: 0 10px 10px 0;
+        font-size: 15.5px;
+        color: var(--text);
+      }
+      aside.callout > strong:first-child {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      aside.callout p { margin: 0 0 10px; }
+      aside.callout p:last-child { margin-bottom: 0; }
+      aside.callout.warn { border-color: var(--hot); background: rgba(251, 191, 36, 0.07); }
+      aside.callout.warn > strong:first-child { color: var(--hot); }
+      aside.callout.ok { border-color: var(--good); background: rgba(74, 222, 128, 0.07); }
+      aside.callout.ok > strong:first-child { color: var(--good); }
+      aside.callout.bad { border-color: var(--bad); background: rgba(248, 113, 113, 0.07); }
+      aside.callout.bad > strong:first-child { color: var(--bad); }
+
+      /* scrub-timeline */
+      .scrub-track {
+        position: relative;
+        padding: 6px 0 14px;
+      }
+      .scrub-track input[type='range'] {
+        width: 100%;
+        accent-color: var(--accent-strong);
+      }
+      .scrub-frames {
+        display: grid;
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .scrub-frame {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 10px 14px;
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--border-strong);
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .scrub-frame .actor {
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        font-weight: 600;
+        padding-top: 2px;
+      }
+      .scrub-frame .body { color: var(--text); }
+      .scrub-frame.a-user      { border-left-color: var(--accent-strong); }
+      .scrub-frame.a-user      .actor { color: var(--accent); }
+      .scrub-frame.a-assistant { border-left-color: var(--hot); }
+      .scrub-frame.a-assistant .actor { color: var(--hot); }
+      .scrub-frame.a-tool      { border-left-color: var(--good); }
+      .scrub-frame.a-tool      .actor { color: var(--good); }
+      .scrub-frame.a-system    { border-left-color: var(--text-faint); }
+      .scrub-frame.a-system    .actor { color: var(--text-faint); }
+
+      /* reveal */
+      .reveal-question {
+        font-size: 17px;
+        line-height: 1.5;
+        color: var(--text);
+        margin: 0 0 16px;
+      }
+      .reveal-button {
+        background: var(--accent-strong);
+        color: #1a1330;
+        border: none;
+        font-weight: 600;
+        font-family: inherit;
+        font-size: 14px;
+        padding: 10px 18px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .reveal-button:hover { filter: brightness(1.07); }
+      .reveal-answer-wrap { margin-top: 8px; }
+      .reveal-after {
+        margin-top: 14px;
+        color: var(--text-dim);
+        font-size: 14.5px;
+        line-height: 1.55;
+      }
+
+      /* flow-diagram */
+      .flow-spine {
+        position: relative;
+        display: grid;
+        gap: 12px;
+        padding: 14px 0 6px;
+      }
+      .flow-node {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        transition: border-color 0.25s, background 0.25s;
+      }
+      .flow-node.lit {
+        border-color: var(--accent-strong);
+        background: rgba(167, 139, 250, 0.13);
+        box-shadow: 0 0 0 1px var(--accent-strong) inset, 0 0 24px -8px var(--accent-strong);
+      }
+      .flow-node .flow-num {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--text-faint);
+        min-width: 22px;
+      }
+      .flow-node.lit .flow-num { color: var(--accent); }
+      .flow-node .flow-label {
+        font-size: 14px;
+        color: var(--text);
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .flow-arrow {
+        text-align: center;
+        font-size: 14px;
+        color: var(--text-faint);
+        margin: -8px 0;
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* spotlight */
+      .spotlight-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 16px;
+        min-width: 0;
+      }
+      @media (max-width: 700px) { .spotlight-grid { grid-template-columns: 1fr; } }
+      .spotlight-code .shiki-wrap pre.shiki { counter-reset: line; }
+      .spotlight-code .shiki-wrap pre.shiki .line {
+        display: inline-block;
+        width: 100%;
+        padding-left: 8px;
+        border-left: 2px solid transparent;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .spotlight-code .shiki-wrap pre.shiki .line.active {
+        border-left-color: var(--accent-strong);
+        background: rgba(167, 139, 250, 0.09);
+      }
+      .spotlight-notes { display: grid; gap: 8px; align-content: start; min-width: 0; }
+      .spotlight-note {
+        text-align: left;
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-family: inherit;
+        color: var(--text-dim);
+        font-size: 14px;
+        line-height: 1.5;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+      }
+      .spotlight-note:hover { color: var(--text); border-color: var(--border-strong); }
+      .spotlight-note.active {
+        border-color: var(--accent-strong);
+        background: rgba(167, 139, 250, 0.1);
+        color: var(--text);
+      }
+      .spotlight-note .nlabel {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--accent);
+        display: block;
+        margin-bottom: 2px;
+        letter-spacing: 0.03em;
+      }
     </style>
   </head>
   <body>
@@ -557,6 +752,135 @@
           round-trip plus intra-call tool dispatch — it isn't the agent loop.
         </p>
 
+        <h2 id="scrub">Scrub-timeline — let them control time</h2>
+        <p>
+          When you want the reader to <em>feel</em> a sequence rather than
+          click through it, give them a slider. Drag right and the agent
+          conversation accumulates frame by frame:
+        </p>
+
+        <div class="demo-mount" data-kind="scrub-timeline">
+          <script type="application/json">
+            {
+              "label": "drag to play out one agent loop",
+              "frames": [
+                { "actor": "user",      "body": "what's in /etc/hosts?" },
+                { "actor": "assistant", "body": "<code>tool_use: read({ path: \"/etc/hosts\" })</code>" },
+                { "actor": "tool",      "body": "127.0.0.1 localhost\n::1 localhost" },
+                { "actor": "assistant", "body": "localhost maps to 127.0.0.1 — both IPv4 and IPv6." }
+              ]
+            }
+          </script>
+        </div>
+
+        <p>
+          Same data as <code>step-through</code>, but the reader pulls time
+          forward with their cursor instead of clicking. Use it when the
+          sequence is a <em>flow</em>, not a checklist.
+        </p>
+
+        <h2 id="reveal">Reveal — make them guess first</h2>
+        <p>
+          Pedagogy hack. Ask the reader a question before you show the
+          answer; the answer lands harder when their brain has already
+          committed to a guess.
+        </p>
+
+        <div class="demo-mount" data-kind="reveal">
+          <script type="application/json">
+            {
+              "question": "What JSON does the model emit when it wants to read <code>/etc/hosts</code>?",
+              "buttonLabel": "Reveal the JSON",
+              "lang": "json",
+              "answer": "{\n  \"type\": \"tool_use\",\n  \"name\": \"read\",\n  \"input\": { \"path\": \"/etc/hosts\" }\n}",
+              "afterText": "That's it. The model never reads the file — it just asks. Your handler does the rest."
+            }
+          </script>
+        </div>
+
+        <h2 id="flow">Flow-diagram — show the path of one request</h2>
+        <p>
+          For step-by-step <em>dataflow</em> (request goes here, then here,
+          then here), a stack of rows reads flat. A spine with a moving
+          highlight reads like motion. Hit play:
+        </p>
+
+        <div class="demo-mount" data-kind="flow-diagram">
+          <script type="application/json">
+            {
+              "label": "one round-trip",
+              "nodes": [
+                { "label": "user prompt" },
+                { "label": "<code>LanguageModel.generateText</code>" },
+                { "label": "Anthropic API (one HTTP call)" },
+                { "label": "<code>Toolkit.handle</code> dispatches" },
+                { "label": "<code>readHandler</code> reads the file" },
+                { "label": "<code>tool_result</code> encoded into the response" }
+              ]
+            }
+          </script>
+        </div>
+
+        <h2 id="spotlight">Spotlight — annotate a snippet</h2>
+        <p>
+          When the topic is "what does each part of <em>this exact line</em>
+          do," put the code in the spotlight and pin notes to specific
+          lines. Click a note to anchor your reader's eye:
+        </p>
+
+        <div class="demo-mount" data-kind="spotlight">
+          <script type="application/json">
+            {
+              "label": "anatomy of Tool.make",
+              "lang": "ts",
+              "code": "Tool.make(\"read\", {\n  description: \"Read a UTF-8 text file.\",\n  parameters: { path: Schema.String },\n  success: Schema.String,\n  failure: FileError,\n  failureMode: \"return\",\n})",
+              "notes": [
+                { "line": 1, "label": "the name",     "body": "What the model sees when picking a tool." },
+                { "line": 3, "label": "parameters",   "body": "Effect Schema → JSON Schema, automatically." },
+                { "line": 5, "label": "failure",      "body": "Typed failure schema. Keeps failures as data." },
+                { "line": 6, "label": "failureMode",  "body": "<strong>Always</strong> <code>\"return\"</code>. The default is wrong." }
+              ]
+            }
+          </script>
+        </div>
+
+        <h2 id="callouts">Callouts — for one-sentence emphasis</h2>
+        <p>
+          Not every interruption deserves a full demo. Sometimes you just
+          want to slow the reader down for one important sentence. Use a
+          plain <code>&lt;aside class="callout"&gt;</code> in the markup —
+          no JSON, no demo machinery:
+        </p>
+
+        <aside class="callout">
+          <strong>Mental model</strong>
+          <p>
+            The model never touches your filesystem. It can't. It asks; your
+            handler runs; the bytes come back as data. Hold onto that
+            asymmetry — it's both the security model and the programming
+            model.
+          </p>
+        </aside>
+
+        <aside class="callout warn">
+          <strong>Gotcha</strong>
+          <p>
+            <code>failureMode</code> defaults to <code>"error"</code>. For
+            almost every tool you'll write, that default is <em>wrong</em>.
+            Set it to <code>"return"</code> alongside any non-<code>Never</code>
+            failure schema.
+          </p>
+        </aside>
+
+        <aside class="callout ok">
+          <strong>Rule of thumb</strong>
+          <p>
+            If your section is a <em>flow</em>, use <code>flow-diagram</code>.
+            If it's a <em>checklist</em>, use <code>step-through</code>. If
+            you want the reader to feel time, use <code>scrub-timeline</code>.
+          </p>
+        </aside>
+
         <h2 id="you-made-it">You made it</h2>
         <p>
           That's it. <em>Really.</em> Three layers — <code>Tool</code>,
@@ -575,6 +899,11 @@
         <a href="#layer-toolkit">Layer 2 — Toolkit</a>
         <a href="#failure-mode">The failureMode trap</a>
         <a href="#turn-loop">Inside one turn</a>
+        <a href="#scrub">Scrub-timeline</a>
+        <a href="#reveal">Reveal</a>
+        <a href="#flow">Flow-diagram</a>
+        <a href="#spotlight">Spotlight</a>
+        <a href="#callouts">Callouts</a>
         <a href="#you-made-it">You made it</a>
       </nav>
     </div>
@@ -876,6 +1205,190 @@
         );
       }
 
+      // ---------- Demo 6: Scrub-timeline ----------
+      // Slider drives a frame index; frames appear in sequence as you drag.
+      // Each frame is styled by `actor` (user/assistant/tool/system).
+      function ScrubTimelineDemo({ label, frames }) {
+        const max = frames.length;
+        const [pos, setPos] = useState(0); // 0..max
+        const [auto, setAuto] = useState(false);
+
+        useEffect(() => {
+          if (!auto) return;
+          if (pos >= max) { setAuto(false); return; }
+          const id = setTimeout(() => setPos((p) => Math.min(p + 1, max)), 650);
+          return () => clearTimeout(id);
+        }, [auto, pos, max]);
+
+        return (
+          <div className="demo">
+            <div className="controls">
+              <button className="primary" onClick={() => { setPos(0); setAuto(true); }}>▶ Play</button>
+              <button className="ghost" onClick={() => { setPos(0); setAuto(false); }}>↺ reset</button>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>
+                frame {pos} / {max}
+              </span>
+            </div>
+            <div className="scrub-track">
+              {label && <div className="label">{label}</div>}
+              <input
+                type="range"
+                min={0}
+                max={max}
+                value={pos}
+                onChange={(e) => { setAuto(false); setPos(parseInt(e.target.value, 10)); }}
+              />
+              <div className="scrub-frames">
+                {frames.map((f, i) => (
+                  <motion.div
+                    key={i}
+                    className={`scrub-frame a-${f.actor || "system"}`}
+                    initial={false}
+                    animate={{
+                      opacity: pos > i ? 1 : 0.16,
+                      y:       pos > i ? 0 : 6,
+                      scale:   pos > i ? 1 : 0.99,
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                  >
+                    <div className="actor">{f.actor || "system"}</div>
+                    <div className="body" dangerouslySetInnerHTML={{ __html: f.body }} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 7: Reveal ----------
+      // A question + a button. Click → answer fades in (Shiki-highlighted).
+      function RevealDemo({ question, buttonLabel, lang, answer, afterText }) {
+        const [shown, setShown] = useState(false);
+        return (
+          <div className="demo">
+            <p className="reveal-question" dangerouslySetInnerHTML={{ __html: question }} />
+            {!shown && (
+              <button className="reveal-button" onClick={() => setShown(true)}>
+                {buttonLabel || "Reveal"}
+              </button>
+            )}
+            {shown && (
+              <motion.div
+                className="reveal-answer-wrap"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 280, damping: 26 }}
+              >
+                <ShikiBlock code={answer} lang={lang || "json"} />
+                {afterText && (
+                  <div className="reveal-after" dangerouslySetInnerHTML={{ __html: afterText }} />
+                )}
+              </motion.div>
+            )}
+          </div>
+        );
+      }
+
+      // ---------- Demo 8: Flow-diagram ----------
+      // Vertical chain of labeled nodes. Play → each node lights up in sequence.
+      function FlowDiagramDemo({ label, nodes, arrowChar }) {
+        const max = nodes.length;
+        const [lit, setLit] = useState(-1);
+        const [auto, setAuto] = useState(false);
+        const arrow = arrowChar || "▼";
+
+        useEffect(() => {
+          if (!auto) return;
+          if (lit >= max - 1) { setAuto(false); return; }
+          const id = setTimeout(() => setLit((s) => s + 1), 700);
+          return () => clearTimeout(id);
+        }, [auto, lit, max]);
+
+        return (
+          <div className="demo">
+            <div className="controls">
+              <button className="primary" onClick={() => { setLit(0); setAuto(true); }}>▶ Play</button>
+              <button className="ghost" onClick={() => setLit((s) => Math.min(max - 1, s + 1))}>step ›</button>
+              <button className="ghost" onClick={() => { setLit(-1); setAuto(false); }}>↺ reset</button>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>
+                {label || ""}
+              </span>
+            </div>
+            <div className="flow-spine">
+              {nodes.map((n, i) => (
+                <React.Fragment key={i}>
+                  <motion.div
+                    className={`flow-node ${lit >= i ? "lit" : ""}`}
+                    initial={false}
+                    animate={{ scale: lit === i ? 1.015 : 1 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                  >
+                    <div className="flow-num">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="flow-label" dangerouslySetInnerHTML={{ __html: n.label }} />
+                  </motion.div>
+                  {i < nodes.length - 1 && <div className="flow-arrow">{arrow}</div>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // ---------- Demo 9: Spotlight ----------
+      // A code block + clickable annotation chips. Click a chip → the
+      // corresponding line gets a left-border accent.
+      function SpotlightDemo({ label, lang, code, notes }) {
+        const spId = useMemo(() => Math.random().toString(36).slice(2, 8), []);
+        const [active, setActive] = useState(notes[0] ? 0 : -1);
+        const [html, setHtml] = useState(null);
+
+        useEffect(() => {
+          let alive = true;
+          highlight(code, lang || "ts").then((h) => { if (alive) setHtml(h); });
+          return () => { alive = false; };
+        }, [code, lang]);
+
+        // After Shiki renders, find the active line by 1-based index inside the
+        // generated <pre><code>. Shiki wraps each line in <span class="line">;
+        // we toggle "active" on the chosen one.
+        useEffect(() => {
+          const root = document.getElementById(`sp-${spId}`);
+          if (!root) return;
+          const lines = root.querySelectorAll(".shiki-wrap pre.shiki .line");
+          lines.forEach((l) => l.classList.remove("active"));
+          const target = notes[active]?.line;
+          if (typeof target === "number" && lines[target - 1]) {
+            lines[target - 1].classList.add("active");
+          }
+        }, [html, active, spId, notes]);
+
+        return (
+          <div className="demo">
+            {label && <div className="label" style={{ marginBottom: 10 }}>{label}</div>}
+            <div className="spotlight-grid" id={`sp-${spId}`}>
+              <div className="spotlight-code">
+                {html
+                  ? <div className="shiki-wrap" dangerouslySetInnerHTML={{ __html: html }} />
+                  : <pre className="shiki-wrap"><code>{code}</code></pre>}
+              </div>
+              <div className="spotlight-notes">
+                {notes.map((n, i) => (
+                  <button
+                    key={i}
+                    className={`spotlight-note ${active === i ? "active" : ""}`}
+                    onClick={() => setActive(i)}
+                  >
+                    <span className="nlabel">line {n.line} — {n.label}</span>
+                    <span dangerouslySetInnerHTML={{ __html: n.body }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       // ---------- Mount: find every .demo-mount and render the right kind ----------
       const REGISTRY = {
         "stack":          StackDemo,
@@ -883,6 +1396,10 @@
         "step-through":   StepThroughDemo,
         "toggle-compare": ToggleCompareDemo,
         "checklist-grid": ChecklistGridDemo,
+        "scrub-timeline": ScrubTimelineDemo,
+        "reveal":         RevealDemo,
+        "flow-diagram":   FlowDiagramDemo,
+        "spotlight":      SpotlightDemo,
       };
 
       // Each <div class="demo-mount" data-kind="..."> contains a
