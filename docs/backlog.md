@@ -75,7 +75,9 @@ exact serialized history that was sent to the model.
   (cwd, model, started-at) from the rollout header — see
   `rollout/src/metadata.rs` for the fields to store.
 
-## Epic 3: Streaming model output
+## Epic 3: Streaming model output — DONE
+
+The harness now streams via `Chat.streamText` (`packages/harness/src/agent-loop.ts:128-186`). Stories below are kept for the diff against codex's SSE/WS dual-channel approach but no longer block other epics.
 
 **Codex source:** `repos/codex/codex-rs/core/src/client.rs`,
 `repos/codex/codex-rs/core/src/client_common.rs`,
@@ -264,7 +266,9 @@ are how Codex scales from one model to a workflow.
 - Add a sample built-in skill (`pr-summary`) under `src/skills/` and
   document the install flow in `docs/guides/`.
 
-## Epic 10: Interactive TUI front-end
+## Epic 10: Interactive TUI front-end — DONE
+
+The Ink TUI ships in `packages/tui/` with multi-turn chat, live tool-call cards, and modal approval (`packages/tui/src/approval-ink.ts`). Stories below remain useful for slash-command parity.
 
 **Codex source:** `repos/codex/codex-rs/tui/src/lib.rs`,
 `repos/codex/codex-rs/tui/src/chatwidget.rs`,
@@ -292,3 +296,30 @@ pager. Even a minimal Effect-driven TUI would change the harness from
 - Add keybindings for "scroll transcript" and "cancel current turn" via
   `Effect.race` against the model stream, mirroring the keymap in
   `tui/src/keymap.rs`.
+
+## Epic 11: System prompt and dynamic context
+
+**Codex source:** `repos/codex/codex-rs/core/src/realtime_prompt.rs`,
+`repos/codex/templates/realtime/backend_prompt.md`
+**Opencode source:** `repos/opencode/packages/opencode/src/session/system.ts` — `environment()` at lines 48-63 (cwd / OS / git status / date), `PROMPT_ANTHROPIC` variant selection at lines 19-32.
+
+**Why:** `Chat.empty` is instantiated at `packages/cli/src/cli.ts:79` and `packages/tui/src/chat-runtime.tsx:21` with **no system prompt at all**. The model is currently working without knowing what OS it's on, what cwd it's in, or what its tools mean beyond their descriptions. All three reference repos inject at least: cwd, OS, date, git status. This is the highest-ROI gap surfaced by the cross-repo review.
+
+### Stories
+
+- Add a `SystemPrompt` Effect service that yields a string given the environment, with a minimal default (cwd + platform + date) modeled on opencode's `environment()`.
+- Wire it into `runAgentTurn` and the chat runtime so every turn opens with the resolved system message.
+- Add a `--system-prompt` CLI override + load from `~/.effectclanker/prompt.md` if present.
+
+## Epic 12: Cooperative cancellation through tool handlers
+
+**Codex source:** `repos/codex/codex-rs/core/src/tools/parallel.rs:77-137` — `tokio::select!` against a `CancellationToken`, `AbortOnDropHandle` at line 101.
+**Pi source:** `repos/pi/packages/agent/src/types.ts:353-376` — `execute(toolCallId, params, signal?, onUpdate?)` signature passes `AbortSignal` to every tool.
+
+**Why:** today `shellHandler` ignores interruption — Ctrl-C in the TUI exits the process but a long `npm install` running under our shell will run to completion, leaving subprocess orphans. Effect already models cancellation; we just don't thread it into tool handlers.
+
+### Stories
+
+- Make `runAgentTurn` interruptible end-to-end via `Effect.interruptible` and verify the stream is properly cancellable.
+- Add an `AbortSignal` to the shell handler (or use Effect's fiber-interrupt boundary to kill the spawned process group) so Ctrl-C terminates in-flight commands.
+- Plumb cancellation through the TUI: a keybind ("Esc" or "Ctrl-C") interrupts the running turn fiber without exiting Ink.

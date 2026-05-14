@@ -274,6 +274,45 @@ targets.
 
 ---
 
+## 6. Seed env context with `Chat.fromPrompt`, not `Chat.empty`
+
+`Chat.empty` initialises history to `Prompt.empty` — the model sees no
+working directory, no platform, no date. That blank start is fine for
+unit tests but wrong for any real session: the model has to ask the user
+(or hallucinate) for context it could have had from turn 0.
+
+The seam is `Chat.fromPrompt(rawInput)` at
+`repos/effect/packages/ai/ai/src/Chat.ts:493-499`. It calls `Chat.empty`
+internally and then `Ref.set`s the history to `Prompt.make(rawInput)`,
+so downstream `streamText` / history threading in `Chat` work
+unchanged. Pass a single `role: "system"` message describing the
+environment.
+
+In this repo: `packages/harness/src/system-prompt.ts` exposes
+`buildEnvironmentSystemPrompt(env)` (pure, three-line `<env>` block) and
+`chatWithEnvironment(env)` (thin wrapper over `Chat.fromPrompt`). Both
+CLI (`packages/cli/src/cli.ts`) and TUI (`packages/tui/src/chat-runtime.tsx`)
+seed every session with it. The TUI also threads the same seed into
+`slashCommand`'s third `clearTo` arg so `/clear` resets the visible
+transcript without losing the env context.
+
+Don't rebuild the seed when you already have the `Chat`. `Prompt.RawInput`
+is `string | Iterable<MessageEncoded> | Prompt`
+(`repos/effect/packages/ai/ai/src/Prompt.ts:1424-1428`) — so
+`yield* Ref.get(chat.history)` returns a `Prompt` you can pass straight
+back into anything that takes a `RawInput` (e.g. `Prompt.make(clearTo)`
+inside `/clear`). The TUI uses exactly this: it builds the chat via
+`chatWithEnvironment`, reads the seed back from `chat.history`, and
+threads it into `slashCommand`. No duplicate string-build, and no risk
+of the seed and the restore drifting apart.
+
+Keep the env block deterministic and small: cwd, platform, date.
+Anything that requires I/O (e.g. `fs.exists('.git')`) pays a startup
+cost on every invocation, and the model already knows facts it doesn't
+need to be told (its own id).
+
+---
+
 ## Tooling appendix
 
 Smaller things that aren't worth a full pattern but will save five minutes

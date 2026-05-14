@@ -7,3 +7,8 @@ export {
   type StopCondition,
   type TurnEvent,
 } from "./agent-loop.ts";
+export {
+  buildEnvironmentSystemPrompt,
+  chatWithEnvironment,
+  type EnvironmentInfo,
+} from "./system-prompt.ts";

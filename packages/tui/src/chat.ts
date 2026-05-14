@@ -29,6 +29,7 @@ const HELP_TEXT = "/exit quits, /clear resets conversation history, /help shows 
 export const slashCommand = (
   line: string,
   chat: Chat.Service,
+  clearTo: Prompt.RawInput = Prompt.empty,
 ): Effect.Effect<SlashCommandResult> => {
   const trimmed = line.trim();
   if (!trimmed.startsWith("/")) {
@@ -41,7 +42,7 @@ export const slashCommand = (
     case "/help":
       return Effect.succeed({ kind: "handled", text: HELP_TEXT });
     case "/clear":
-      return Ref.set(chat.history, Prompt.empty).pipe(
+      return Ref.set(chat.history, Prompt.make(clearTo)).pipe(
         Effect.as<SlashCommandResult>({ kind: "cleared", text: "Conversation cleared." }),
       );
     default:

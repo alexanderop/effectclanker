@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-import { Chat } from "@effect/ai";
 import { AnthropicClient, AnthropicLanguageModel } from "@effect/ai-anthropic";
 import { Args, Command, Options } from "@effect/cli";
 import { FetchHttpClient } from "@effect/platform";
@@ -12,6 +11,7 @@ import {
 } from "@effectclanker/tools";
 import {
   ApprovalInteractiveLayer,
+  chatWithEnvironment,
   HarnessToolkitLayerBare,
   runAgentTurn,
   stepCountIs,
@@ -76,7 +76,11 @@ const runCommand = Command.make(
   { model: modelOption, prompt: promptArg, approval: approvalOption },
   ({ approval, model, prompt }) =>
     Effect.gen(function* () {
-      const chat = yield* Chat.empty;
+      const chat = yield* chatWithEnvironment({
+        cwd: process.cwd(),
+        platform: process.platform,
+        date: new Date(),
+      });
       const acc: RunAccumulator = {
         text: "",
         toolCalls: [],

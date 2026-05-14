@@ -2,7 +2,7 @@ import { AiError, Chat, Prompt } from "@effect/ai";
 import type * as Response from "@effect/ai/Response";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Ref, Stream } from "effect";
-import { HarnessToolkitLayer } from "@effectclanker/harness";
+import { chatWithEnvironment, HarnessToolkitLayer } from "@effectclanker/harness";
 import { runChatTurn, slashCommand, type TurnEvent } from "../src/chat.ts";
 import { withLanguageModel } from "./utilities.ts";
 
@@ -133,6 +133,34 @@ describe("chat loop", () => {
       expect(turn2Text).toContain("turn 2 reply");
     }).pipe(withLanguageModel({ streamText }), Effect.provide(HarnessToolkitLayer));
   });
+
+  it.effect("the mock LLM sees the env system message on the first turn", () => {
+    const env = {
+      cwd: "/tmp/work",
+      platform: "darwin",
+      date: new Date("2026-05-14T00:00:00Z"),
+    };
+    let capturedFirst: Prompt.Message | undefined;
+    const streamText = (opts: { readonly prompt: Prompt.Prompt }) => {
+      capturedFirst = opts.prompt.content[0];
+      return [...text("t1", "ok"), finishPart("stop")];
+    };
+    return Effect.gen(function* () {
+      const events = yield* Ref.make<ReadonlyArray<TurnEvent>>([]);
+      const chat = yield* chatWithEnvironment(env);
+      yield* runChatTurn({
+        chat,
+        prompt: "hi",
+        onEvent: (event) => Ref.update(events, (xs) => [...xs, event]),
+      });
+      expect(capturedFirst?.role).toBe("system");
+      if (capturedFirst?.role === "system") {
+        expect(capturedFirst.content).toContain("/tmp/work");
+        expect(capturedFirst.content).toContain("darwin");
+        expect(capturedFirst.content).toContain(new Date("2026-05-14T00:00:00Z").toDateString());
+      }
+    }).pipe(withLanguageModel({ streamText }), Effect.provide(HarnessToolkitLayer));
+  });
 });
 
 describe("chat error handling", () => {
@@ -203,6 +231,32 @@ describe("slashCommand", () => {
       const chat = yield* Chat.empty;
       const result = yield* slashCommand("/exit", chat);
       expect(result).toStrictEqual({ kind: "quit" });
+    }),
+  );
+
+  it.effect("/clear with a seed prompt preserves the system message", () =>
+    Effect.gen(function* () {
+      const env = {
+        cwd: "/tmp/work",
+        platform: "darwin",
+        date: new Date("2026-05-14T00:00:00Z"),
+      };
+      const seed = [{ role: "system" as const, content: "X" }];
+
+      const chat1 = yield* chatWithEnvironment(env);
+      yield* slashCommand("/clear", chat1, seed);
+      const h1 = yield* Ref.get(chat1.history);
+      expect(h1.content).toHaveLength(1);
+      const msg1 = h1.content[0];
+      expect(msg1?.role).toBe("system");
+      if (msg1?.role === "system") {
+        expect(msg1.content).toBe("X");
+      }
+
+      const chat2 = yield* chatWithEnvironment(env);
+      yield* slashCommand("/clear", chat2);
+      const h2 = yield* Ref.get(chat2.history);
+      expect(h2).toStrictEqual(Prompt.empty);
     }),
   );
 });

@@ -1,4 +1,3 @@
-import { Chat } from "@effect/ai";
 import { Deferred, Effect, Fiber, Queue, Ref } from "effect";
 import { render } from "ink";
 import React, { useEffect, useState } from "react";
@@ -6,6 +5,7 @@ import { runChatTurn, slashCommand } from "./chat.ts";
 import { makeChatStateController } from "./chat-state.ts";
 import { ChatApp } from "./chat-ui.tsx";
 import { PlanStore } from "@effectclanker/tools";
+import { chatWithEnvironment } from "@effectclanker/harness";
 import { ApprovalInk, type PendingApproval } from "./approval-ink.ts";
 
 interface ChatLoopOptions {
@@ -18,7 +18,12 @@ interface ChatLoopOptions {
 // pending-approval state.
 export const runChatApp = (options: ChatLoopOptions) =>
   Effect.gen(function* () {
-    const chat = yield* Chat.empty;
+    const chat = yield* chatWithEnvironment({
+      cwd: process.cwd(),
+      platform: process.platform,
+      date: new Date(),
+    });
+    const seedPrompt = yield* Ref.get(chat.history);
     const controller = makeChatStateController();
     const inputQueue = yield* Queue.unbounded<string>();
     const cancelRef = yield* Ref.make<Fiber.Fiber<void> | null>(null);
@@ -70,7 +75,7 @@ export const runChatApp = (options: ChatLoopOptions) =>
     const chatLoop = Effect.forever(
       Effect.gen(function* () {
         const line = yield* Queue.take(inputQueue);
-        const result = yield* slashCommand(line, chat);
+        const result = yield* slashCommand(line, chat, seedPrompt);
 
         if (result.kind === "quit") {
           yield* Deferred.succeed(exitSignal, undefined);
