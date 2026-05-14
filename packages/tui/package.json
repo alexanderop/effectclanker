@@ -1,0 +1,22 @@
+{
+  "name": "@effectclanker/tui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@effect/ai": "^0.35.0",
+    "@effectclanker/harness": "workspace:*",
+    "@effectclanker/tools": "workspace:*",
+    "effect": "^3.21.0",
+    "ink": "^7.0.3",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.6"
+  }
+}

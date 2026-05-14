@@ -79,7 +79,7 @@ Read the screenshot. If any panel overflows, any demo is empty, or the prose rea
 ## Common failures
 
 - **Generic prose.** Re-read `voice.md`. Every section opens with a hook — a confession, a question, "let's slow down" — never a topic sentence.
-- **Flat page, every demo looks the same.** You used `step-through` or `stack` five times in a row. Open `demo-catalog.md`, read the *Pattern selection* table at the top, then rotate. Aim for at least 4 distinct demo kinds across a 5-section page, plus 1–2 `callout` asides.
+- **Flat page, every demo looks the same.** You used `step-through` or `stack` five times in a row. Open `demo-catalog.md`, read the _Pattern selection_ table at the top, then rotate. Aim for at least 4 distinct demo kinds across a 5-section page, plus 1–2 `callout` asides.
 - **Demo doesn't render.** The card shows why. Almost always invalid JSON inside the `<script type="application/json">` (unescaped quote, trailing comma, missing comma between fields) or an unknown `data-kind`.
 - **Missing script.** A `<div class="demo-mount">` with no `<script type="application/json">` child mounts an error. Each demo needs the script.
 - **Overflowing panel.** A line in your JSON is too long for the grid column. Split the string with `\n`.

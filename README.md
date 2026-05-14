@@ -27,18 +27,18 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ```sh
 # Run the harness against a prompt
-bun src/cli.ts run "list the TypeScript files in src/"
+bun packages/cli/src/cli.ts run "list the TypeScript files in packages/"
 
 # Pick a model
-bun src/cli.ts run --model claude-sonnet-4-6 "..."
+bun packages/cli/src/cli.ts run --model claude-sonnet-4-6 "..."
 
 # Gate the bash tool behind an approval policy
-bun src/cli.ts run --approval interactive "..."   # prompt y/N per call
-bun src/cli.ts run --approval deny "..."          # reject every gated call
-bun src/cli.ts run --approval auto "..."          # default
+bun packages/cli/src/cli.ts run --approval interactive "..."   # prompt y/N per call
+bun packages/cli/src/cli.ts run --approval deny "..."          # reject every gated call
+bun packages/cli/src/cli.ts run --approval auto "..."          # default
 
 # CLI help (no API key required)
-bun src/cli.ts --help
+bun packages/cli/src/cli.ts --help
 ```
 
 ## Commands
@@ -66,15 +66,14 @@ Run `bun run check` before declaring a change done.
 
 ## Project layout
 
-| Path             | What it is                                                                     |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `src/tools/*.ts` | One file per tool. Each exports a `Tool.make` spec and a handler function.     |
-| `src/toolkit.ts` | `Toolkit.make(...)` of all tools, plus `.toLayer({...})` wiring handlers.      |
-| `src/cli.ts`     | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`. |
-| `src/services/`  | Cross-cutting services (approval policy, plan store).                          |
-| `test/`          | Handler-direct tests and end-to-end toolkit tests.                             |
-| `docs/`          | Wiki — start at `docs/index.md`.                                               |
-| `repos/`         | Read-only vendored source for `effect` and `codex`.                            |
+| Path                    | What it is                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `packages/tools/`       | One file per tool under `src/`. Each exports a `Tool.make` spec and a handler. Also owns errors + plan store. |
+| `packages/harness/`     | `Toolkit.make(...)` of all tools, plus the harness toolkit layers and the interactive approval layer.         |
+| `packages/tui/`         | Ink chat UI — `chat-runtime.tsx`, `chat-ui.tsx`, and the Ink-backed approval layer.                           |
+| `packages/cli/src/cli.ts` | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`.                              |
+| `docs/`                 | Wiki — start at `docs/index.md`.                                                                              |
+| `repos/`                | Read-only vendored source for `effect`, `codex`, and `pi`.                                                    |
 
 ## Documentation
 

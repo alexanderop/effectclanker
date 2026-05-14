@@ -7,14 +7,14 @@ a `Tool` vs `Toolkit` vs `LanguageModel` is.
 
 ---
 
-## 1. Create `src/tools/<name>.ts`
+## 1. Create `packages/tools/src/<name>.ts`
 
 Each tool file exports two things: the `Tool.make` spec and a handler
-function. Copy any existing tool as a template — `src/tools/read.ts` is
-the simplest.
+function. Copy any existing tool as a template — `packages/tools/src/read.ts`
+is the simplest.
 
 ```ts
-// src/tools/example.ts
+// packages/tools/src/example.ts
 import { Tool } from "@effect/ai";
 import { Effect, Schema } from "effect";
 
@@ -61,12 +61,12 @@ export const exampleHandler = ({
   `Effect.tryPromise({ try, catch })`. `bash` is the only legitimate
   `Effect.async` use case in the codebase.
 
-## 2. Register in `src/toolkit.ts`
+## 2. Register in `packages/harness/src/toolkit.ts`
 
 Add the tool to `Toolkit.make` and its handler to `.toLayer`:
 
 ```ts
-import { ExampleTool, exampleHandler } from "./tools/example.ts";
+import { ExampleTool, exampleHandler } from "@effectclanker/tools";
 
 export const HarnessToolkit = Toolkit.make(
   ReadTool,
@@ -88,26 +88,27 @@ export const HarnessToolkitLayer = HarnessToolkit.toLayer({
 If you forget either side, TypeScript fails the build. The `.toLayer`
 record type is derived from `Toolkit.make`'s arguments.
 
-## 3. Re-export from `src/index.ts`
+## 3. Re-export from `packages/tools/src/index.ts`
 
-So library consumers (and your own tests) can import without reaching
-into `src/tools/`:
+So consumers in `harness`/`tui`/`cli` (and your own tests) can `import
+{ ExampleTool, exampleHandler } from "@effectclanker/tools"` without
+reaching into the package's internal layout:
 
 ```ts
-export { exampleHandler, type ExampleParams, ExampleTool } from "./tools/example.ts";
+export { exampleHandler, type ExampleParams, ExampleTool } from "./example.ts";
 ```
 
 ## 4. Write tests
 
 Two layers, both required for a new tool:
 
-**Handler-direct test** in `test/tools/example.test.ts`. Calls the
-exported handler with concrete params. Fast, focused, easy to debug.
+**Handler-direct test** in `packages/tools/test/example.test.ts`. Calls
+the exported handler with concrete params. Fast, focused, easy to debug.
 
 **Toolkit-via-mock test** — if the new tool has interesting failure
-modes, add a case to `test/toolkit.test.ts` that drives `generateText`
-with a scripted tool call. This proves the spec ↔ handler ↔ Toolkit
-wiring works end-to-end.
+modes, add a case to `packages/harness/test/toolkit.test.ts` that drives
+`generateText` with a scripted tool call. This proves the spec ↔ handler
+↔ Toolkit wiring works end-to-end.
 
 See [testing](./testing.md) for the patterns and helpers.
 

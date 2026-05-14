@@ -23,20 +23,20 @@ The reader's eye gets bored when every demo is the same shape. **Rotate kinds ac
 - a **moment of stillness** (`spotlight` or `reveal`)
 - and a `callout` aside or two for one-sentence emphasis
 
-Pick by the *shape* of the idea, not by what's easiest to fill in:
+Pick by the _shape_ of the idea, not by what's easiest to fill in:
 
-| If the idea is…                                          | Use                |
-|----------------------------------------------------------|--------------------|
-| layered architecture / N nested concepts                 | `stack`            |
-| "edit this input, see this output"                       | `side-by-side`     |
-| a checklist or sequence the reader clicks through        | `step-through`     |
-| A vs B (default vs override, before vs after)            | `toggle-compare`   |
-| a list of toggleable members that change two derived views | `checklist-grid`   |
-| a sequence the reader should *feel*, not click through   | `scrub-timeline`   |
-| dataflow / request path / pipeline                       | `flow-diagram`     |
-| "what does each part of this exact snippet do?"          | `spotlight`        |
-| "guess first, then I'll show you"                        | `reveal`           |
-| one sentence that deserves to slow the reader down       | `<aside class="callout">` |
+| If the idea is…                                            | Use                       |
+| ---------------------------------------------------------- | ------------------------- |
+| layered architecture / N nested concepts                   | `stack`                   |
+| "edit this input, see this output"                         | `side-by-side`            |
+| a checklist or sequence the reader clicks through          | `step-through`            |
+| A vs B (default vs override, before vs after)              | `toggle-compare`          |
+| a list of toggleable members that change two derived views | `checklist-grid`          |
+| a sequence the reader should _feel_, not click through     | `scrub-timeline`          |
+| dataflow / request path / pipeline                         | `flow-diagram`            |
+| "what does each part of this exact snippet do?"            | `spotlight`               |
+| "guess first, then I'll show you"                          | `reveal`                  |
+| one sentence that deserves to slow the reader down         | `<aside class="callout">` |
 
 ## Contents
 
@@ -62,9 +62,9 @@ Labeled rows with ▼ arrows between them. Best for "the N-layer model" overview
   <script type="application/json">
     {
       "rows": [
-        { "tag": "Tool",          "desc": "a typed spec for one capability",    "tint": "hot"   },
-        { "tag": "Toolkit",       "desc": "a record of tools + their handlers", "tint": "kit"   },
-        { "tag": "LanguageModel", "desc": "drives one model call",              "tint": "model" }
+        { "tag": "Tool", "desc": "a typed spec for one capability", "tint": "hot" },
+        { "tag": "Toolkit", "desc": "a record of tools + their handlers", "tint": "kit" },
+        { "tag": "LanguageModel", "desc": "drives one model call", "tint": "model" }
       ],
       "arrows": ["composed by", "consumed by"]
     }
@@ -86,15 +86,21 @@ Inputs on the left drive two derived code panels. Both panels are Shiki-highligh
   <script type="application/json">
     {
       "inputs": [
-        { "name": "toolName", "type": "text",   "default": "read",  "label": "name" },
-        { "name": "param",    "type": "text",   "default": "path",  "label": "first param" },
-        { "name": "kind",     "type": "select", "options": ["String","Number","Boolean"], "default": "String", "label": "type" }
+        { "name": "toolName", "type": "text", "default": "read", "label": "name" },
+        { "name": "param", "type": "text", "default": "path", "label": "first param" },
+        {
+          "name": "kind",
+          "type": "select",
+          "options": ["String", "Number", "Boolean"],
+          "default": "String",
+          "label": "type"
+        }
       ],
-      "leftLang":      "ts",
-      "leftLabel":     "Your Tool.make spec",
-      "leftTemplate":  "Tool.make(\"{toolName}\", {\n  parameters: { {param}: Schema.{kind} },\n})",
-      "rightLang":     "json",
-      "rightLabel":    "What the model sees",
+      "leftLang": "ts",
+      "leftLabel": "Your Tool.make spec",
+      "leftTemplate": "Tool.make(\"{toolName}\", {\n  parameters: { {param}: Schema.{kind} },\n})",
+      "rightLang": "json",
+      "rightLabel": "What the model sees",
       "rightTemplate": "{\n  \"name\": \"{toolName}\",\n  \"input_schema\": {\n    \"properties\": { \"{param}\": { \"type\": \"{kind:lower}\" } }\n  }\n}"
     }
   </script>
@@ -123,7 +129,10 @@ Numbered timeline. Each row reveals (springs in) as you advance the step. Play /
         { "num": "2.", "body": "handler runs, fails with <code>FileNotFound</code>" },
         { "num": "3.", "body": "framework catches the failure" },
         { "num": "4.", "body": "encodes the failure into the response" },
-        { "num": "5.", "body": "<span class='badge ok'>turn survives</span> — model can recover next turn" }
+        {
+          "num": "5.",
+          "body": "<span class='badge ok'>turn survives</span> — model can recover next turn"
+        }
       ]
     }
   </script>
@@ -148,7 +157,7 @@ Like `step-through`, but with two variants chosen by a sliding-pill toggle.
       "label": "timeline of one tool call that fails",
       "options": [
         { "value": "return", "label": "failureMode: \"return\"" },
-        { "value": "error",  "label": "failureMode: \"error\" (default)" }
+        { "value": "error", "label": "failureMode: \"error\" (default)" }
       ],
       "variants": {
         "return": [
@@ -181,21 +190,21 @@ Toggle items in the control row; two Shiki-highlighted code panels show only the
   <script type="application/json">
     {
       "items": [
-        { "name": "read",  "handler": "readHandler",  "default": true  },
-        { "name": "write", "handler": "writeHandler", "default": true  },
-        { "name": "edit",  "handler": "editHandler",  "default": true  },
-        { "name": "bash",  "handler": "bashHandler",  "default": false },
-        { "name": "glob",  "handler": "globHandler",  "default": true  },
-        { "name": "grep",  "handler": "grepHandler",  "default": false }
+        { "name": "read", "handler": "readHandler", "default": true },
+        { "name": "write", "handler": "writeHandler", "default": true },
+        { "name": "edit", "handler": "editHandler", "default": true },
+        { "name": "bash", "handler": "bashHandler", "default": false },
+        { "name": "glob", "handler": "globHandler", "default": true },
+        { "name": "grep", "handler": "grepHandler", "default": false }
       ],
-      "leftLang":   "ts",
-      "leftLabel":  "src/toolkit.ts",
-      "leftItem":   "  {Name}Tool,",
-      "leftWrap":   "export const HarnessToolkit = Toolkit.make(\n{ITEMS}\n);",
-      "rightLang":  "ts",
+      "leftLang": "ts",
+      "leftLabel": "src/toolkit.ts",
+      "leftItem": "  {Name}Tool,",
+      "leftWrap": "export const HarnessToolkit = Toolkit.make(\n{ITEMS}\n);",
+      "rightLang": "ts",
       "rightLabel": ".toLayer — the handler record",
-      "rightItem":  "    {name}: {handler},",
-      "rightWrap":  "export const HarnessToolkitLayer =\n  HarnessToolkit.toLayer({\n{ITEMS}\n  });"
+      "rightItem": "    {name}: {handler},",
+      "rightWrap": "export const HarnessToolkitLayer =\n  HarnessToolkit.toLayer({\n{ITEMS}\n  });"
     }
   </script>
 </div>
@@ -203,13 +212,13 @@ Toggle items in the control row; two Shiki-highlighted code panels show only the
 
 - Each `items[]` entry's fields are available to the templates as `{fieldName}`.
 - `{Name}` (capitalised) is auto-derived from `name`.
-- `leftItem` / `rightItem` render once per *enabled* item; results are newline-joined and substituted into `{ITEMS}` in the wrap.
+- `leftItem` / `rightItem` render once per _enabled_ item; results are newline-joined and substituted into `{ITEMS}` in the wrap.
 
 ---
 
 ## scrub-timeline
 
-A horizontal slider drives a frame index; frames appear in sequence as you drag. Frames are styled by `actor` (color-coded left border, uppercase label). This is the **Comeau "scrub through time"** pattern — use it when you want the reader to *feel* the sequence rather than click through it. Perfect for showing a conversation or message thread accumulating.
+A horizontal slider drives a frame index; frames appear in sequence as you drag. Frames are styled by `actor` (color-coded left border, uppercase label). This is the **Comeau "scrub through time"** pattern — use it when you want the reader to _feel_ the sequence rather than click through it. Perfect for showing a conversation or message thread accumulating.
 
 ```html
 <div class="demo-mount" data-kind="scrub-timeline">
@@ -217,9 +226,9 @@ A horizontal slider drives a frame index; frames appear in sequence as you drag.
     {
       "label": "drag to play out one agent loop",
       "frames": [
-        { "actor": "user",      "body": "what's in /etc/hosts?" },
+        { "actor": "user", "body": "what's in /etc/hosts?" },
         { "actor": "assistant", "body": "<code>tool_use: read({ path: \"/etc/hosts\" })</code>" },
-        { "actor": "tool",      "body": "127.0.0.1 localhost" },
+        { "actor": "tool", "body": "127.0.0.1 localhost" },
         { "actor": "assistant", "body": "localhost maps to 127.0.0.1." }
       ]
     }
@@ -238,7 +247,7 @@ Distinct from `step-through`: that one uses buttons and a "checklist" feel; this
 
 ## reveal
 
-A question, a button, an answer. The button hides the answer until clicked. Once clicked, the answer (Shiki-highlighted) springs in. Forces the reader to *predict before peeking* — pedagogy more than UI.
+A question, a button, an answer. The button hides the answer until clicked. Once clicked, the answer (Shiki-highlighted) springs in. Forces the reader to _predict before peeking_ — pedagogy more than UI.
 
 ```html
 <div class="demo-mount" data-kind="reveal">
@@ -289,13 +298,13 @@ Vertical chain of labeled nodes with `▼` arrows between them. Hit play (or `st
 - `arrowChar` defaults to `▼`; pass `"↓"`, `"⇣"`, or `"⟶"` if you want a different glyph.
 - Aim for 4–8 nodes. Past 8, the spine starts feeling like a step-through.
 
-Use this for **request paths, pipelines, sequences with causality** — anywhere the next thing happens *because of* the previous thing. For "the 3 layers of our architecture," use `stack` instead.
+Use this for **request paths, pipelines, sequences with causality** — anywhere the next thing happens _because of_ the previous thing. For "the 3 layers of our architecture," use `stack` instead.
 
 ---
 
 ## spotlight
 
-A code snippet on one side, clickable annotation cards on the other. Click a card to anchor the reader's eye to a specific line of the code (purple left-border highlight). Best for "what does each part of *this exact line* do."
+A code snippet on one side, clickable annotation cards on the other. Click a card to anchor the reader's eye to a specific line of the code (purple left-border highlight). Best for "what does each part of _this exact line_ do."
 
 ```html
 <div class="demo-mount" data-kind="spotlight">
@@ -305,10 +314,14 @@ A code snippet on one side, clickable annotation cards on the other. Click a car
       "lang": "ts",
       "code": "Tool.make(\"read\", {\n  description: \"Read a file.\",\n  parameters: { path: Schema.String },\n  success: Schema.String,\n  failure: FileError,\n  failureMode: \"return\",\n})",
       "notes": [
-        { "line": 1, "label": "the name",    "body": "What the model sees when picking a tool." },
-        { "line": 3, "label": "parameters",  "body": "Effect Schema → JSON Schema, automatically." },
-        { "line": 5, "label": "failure",     "body": "Typed failure schema. Keeps failures as data." },
-        { "line": 6, "label": "failureMode", "body": "<strong>Always</strong> <code>\"return\"</code>." }
+        { "line": 1, "label": "the name", "body": "What the model sees when picking a tool." },
+        { "line": 3, "label": "parameters", "body": "Effect Schema → JSON Schema, automatically." },
+        { "line": 5, "label": "failure", "body": "Typed failure schema. Keeps failures as data." },
+        {
+          "line": 6,
+          "label": "failureMode",
+          "body": "<strong>Always</strong> <code>\"return\"</code>."
+        }
       ]
     }
   </script>

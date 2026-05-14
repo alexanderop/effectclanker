@@ -5,15 +5,15 @@ Imitate Josh Comeau (joshwcomeau.com). The voice does real work in this skill �
 ## Rules
 
 - **Open each section with a hook.** A confession ("OK. Real talk. This one bit me."), a question ("Have you ever had the unsettling experience of…"), or "let's slow down and watch what's happening here." Never a topic sentence.
-- **Italicize emotional beats.** *Really.* *Not* this. *Forever.* The italics carry pacing. One or two per paragraph, max.
+- **Italicize emotional beats.** _Really._ _Not_ this. _Forever._ The italics carry pacing. One or two per paragraph, max.
 - **Bold the takeaway sentence.** Once per section, the line you'd quote on Twitter. Sentence-form, not a heading.
 - **Em-dashes for asides — like this — not commas.** They mimic spoken cadence.
-- **Use you / we / let's.** "We've got specs. Specs don't *do* anything. Time to give them implementations."
-- **One personal anecdote per section, max.** "It took me embarrassingly long to figure out…" / "I admit it: for a long time, I didn't really understand what the *deal* was with X."
+- **Use you / we / let's.** "We've got specs. Specs don't _do_ anything. Time to give them implementations."
+- **One personal anecdote per section, max.** "It took me embarrassingly long to figure out…" / "I admit it: for a long time, I didn't really understand what the _deal_ was with X."
 - **End sections with a callback, not a summary.** Refer forward to the next idea, or call back to an earlier metaphor. No "In summary," ever.
 - **Vary rhythm.** Short. Then a longer sentence that winds through a clarification and lands on the key word.
 - **Hedge confidently.** "Honestly", "Truthfully", "OK so" — sparingly, and only when about to drop a real opinion.
-- **Show, then explain.** Drop the demo first, then say *why* it works that way. Don't pre-explain.
+- **Show, then explain.** Drop the demo first, then say _why_ it works that way. Don't pre-explain.
 
 ## Don't
 
@@ -27,11 +27,11 @@ Imitate Josh Comeau (joshwcomeau.com). The voice does real work in this skill �
 
 Three verbatim paragraphs from a guide that hit the mark. Match this register:
 
-> A `Tool` is just metadata. *Really.* I know that sounds like a deflection, but stick with me — this was the thing that took me longest to internalize, and it's the entire reason `@effect/ai` is so pleasant to use.
+> A `Tool` is just metadata. _Really._ I know that sounds like a deflection, but stick with me — this was the thing that took me longest to internalize, and it's the entire reason `@effect/ai` is so pleasant to use.
 
-> OK. Real talk. This one bit me, and I want to spare you the same hour I lost. `Tool.make` has a field called `failureMode`. It defaults to `"error"`. And that default — for almost every tool you'll ever write — is *wrong*.
+> OK. Real talk. This one bit me, and I want to spare you the same hour I lost. `Tool.make` has a field called `failureMode`. It defaults to `"error"`. And that default — for almost every tool you'll ever write — is _wrong_.
 
-> Take a second to notice what *didn't* happen there. The model was never called a second time. It produced one response, the framework dispatched the tool call, encoded the result back into the same response, and returned. That is the loop. Or rather — that's the *absence* of the loop.
+> Take a second to notice what _didn't_ happen there. The model was never called a second time. It produced one response, the framework dispatched the tool call, encoded the result back into the same response, and returned. That is the loop. Or rather — that's the _absence_ of the loop.
 
 ## Self-check before finalising
 

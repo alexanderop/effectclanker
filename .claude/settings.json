@@ -9,9 +9,7 @@
       "Write(./.env)",
       "Write(./.env.*)"
     ],
-    "allow": [
-      "Read(./.env.example)"
-    ]
+    "allow": ["Read(./.env.example)"]
   },
   "hooks": {
     "SessionStart": [

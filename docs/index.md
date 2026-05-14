@@ -1,15 +1,19 @@
 # Docs
 
 ## Guides
+
 - [[guides/adding-a-tool]]
 - [[guides/testing]]
 
 ## Patterns
+
+- [[patterns/chat-ui-style]]
 - [[patterns/effect-ai-gotchas]]
 - [[patterns/oxlint-effect-rules]]
 - [[patterns/pi-api-key-resolution]]
 
 ## Principles
+
 - [[principles]]
 - [[principles/boundary-discipline]]
 - [[principles/cost-aware-delegation]]
@@ -29,10 +33,10 @@
 - [[principles/subtract-before-you-add]]
 
 ## Other
+
 - [[architecture]]
 - [[backlog]]
 - [[guides-adding-a-tool]]
 - [[overview]]
 - [[testing-strategy]]
 - [[tooling]]
-

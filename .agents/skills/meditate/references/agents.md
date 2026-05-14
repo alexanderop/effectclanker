@@ -5,6 +5,7 @@ All agents are spawned as `subagent_type: "general-purpose"`. All agents are **r
 ## Common prompt inclusions
 
 Every agent prompt should include:
+
 - Docs snapshot path: `/tmp/docs-snapshot.md` — Read this one file for all doc content
 - Vault path: `docs/`
 - Use Glob/Grep only for **codebase verification**, not for reading doc/skill files
@@ -42,12 +43,14 @@ Prompt spec:
 - Read both snapshots and the auditor report. Skip notes the auditor flagged for deletion.
 
 **Section 1 — Synthesis:**
+
 - Propose missing `[[wikilinks]]` between notes that reference the same concepts
 - Flag principles that appear to conflict; propose how to resolve or clarify the boundary
 - Propose rewording where a note's relationship to a principle is unclear
 - Do NOT propose merging principles — they are intentionally independent
 
 **Section 2 — Distillation:**
+
 - Focus on codebase notes, preferences, and gotchas under `docs/patterns/`, `docs/guides/`, and `docs/stories/`
 - Look for recurring patterns that reveal unstated engineering principles
 - A valid new principle must be: (1) genuinely independent — not derivable from existing principles, (2) evidenced by 2+ separate notes, (3) actionable — changes how you'd approach future work
@@ -55,6 +58,7 @@ Prompt spec:
 - Each proposed principle: insight, evidence (which notes), why independent, suggested path under `docs/principles/`
 
 **Section 3 — Skill review:**
+
 - For each skill, check against docs principles:
   - Does it contradict any principle?
   - Does it miss a structural enforcement opportunity? (can an instruction become a lint rule, script, metadata flag, or runtime check?)

@@ -33,6 +33,7 @@ Audits doc notes, CLAUDE.md, and auto-memory for staleness, redundancy, low-valu
 Spawn one `general-purpose` subagent. See `references/agents.md` for the full prompt spec. Inputs: docs snapshot, skills snapshot, auditor report, `docs/principles.md`.
 
 Combines three concerns in a single pass:
+
 - **Synthesis**: Proposes missing wikilinks, flags principle tensions, suggests clarifications.
 - **Distillation**: Identifies recurring patterns that reveal unstated principles. New principles must be (1) independent, (2) evidenced by 2+ notes, (3) actionable.
 - **Skill review**: Cross-references skills against docs principles. Finds contradictions, missed structural enforcement, redundant instructions.

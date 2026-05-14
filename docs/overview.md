@@ -69,6 +69,6 @@ ignore patterns — see [[tooling]].
 | `src/index.ts`         | Library barrel exports.                                                        |
 | `test/utilities.ts`    | Mirror of `@effect/ai`'s `withLanguageModel` test helper.                      |
 | `test/tools/*.test.ts` | Handler-direct tests (one per tool).                                           |
-| `test/toolkit.test.ts` | End-to-end tests through `generateText` with a mock model.                    |
+| `test/toolkit.test.ts` | End-to-end tests through `generateText` with a mock model.                     |
 | `repos/`               | Read-only vendored source.                                                     |
 | `docs/`                | This vault.                                                                    |

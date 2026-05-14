@@ -167,6 +167,54 @@ will not chain follow-up turns on its own.
 
 ---
 
+## 4. Anthropic reserves a handful of tool names
+
+**Symptom.** A `generateText` (or `streamText`) call rejects with a schema
+decode error like:
+
+```
+ToolCallPart
+  └─ ["name"]
+     └─ Expected "read" | "write" | "edit" | … | "bash" | …, actual "AnthropicBash"
+```
+
+You registered a tool called `bash` and the model called `bash`, but the
+response part comes back named `"AnthropicBash"` and fails to decode against
+your toolkit's tool-name union.
+
+**Fix.** Rename the tool. Anthropic reserves these names for its
+provider-defined (server-side) tools — don't use any of them for a custom
+tool:
+
+```
+bash, code_execution, computer, str_replace_based_edit_tool,
+str_replace_editor, web_search
+```
+
+Codex uses `shell` for the same concept; that's a safe substitute for
+`bash`.
+
+**Why.** `repos/effect/packages/ai/anthropic/src/AnthropicTool.ts:529` —
+the Anthropic adapter holds a `ProviderToolNamesMap` that unconditionally
+rewrites incoming tool-call names matching this set to the corresponding
+provider-defined toolkit name (`bash` → `AnthropicBash`,
+`web_search` → `AnthropicWebSearch`, etc.). The rewrite happens before
+the response schema decodes the parts, so a custom tool with the same
+name never gets a chance to match.
+
+The adapter doesn't check whether the user actually registered a
+provider-defined tool; the rewrite is name-based and global. So even
+though our `bash` is just `Tool.make("bash", …)` against our own handler,
+any call the model labels `"bash"` is interpreted as targeting
+`Bash_20241022` / `Bash_20250124` and decoding blows up against our
+narrower union.
+
+See: `repos/effect/packages/ai/anthropic/src/AnthropicTool.ts:529` for the
+map; lines 47 and 70 for the provider-defined Bash tools that the rewrite
+targets.
+
+---
+
 ## Tooling appendix
 
 Smaller things that aren't worth a full pattern but will save five minutes

@@ -62,9 +62,11 @@ Use `AskUserQuestion` with 2–4 questions per round. Each option should referen
 real from Step 1 — a file, an existing pattern, a concrete tradeoff — not a generic choice.
 
 **Bad (generic):**
+
 > What scope do you want? — MVP / Full-featured / Backend only
 
 **Good (grounded):**
+
 > Should the new `search` tool follow `src/tools/grep.ts` (single ripgrep call, streaming
 > result) or `src/tools/glob.ts` (filesystem walk, returns a list)?
 
@@ -79,7 +81,7 @@ description or earlier answers already settled:
    from `src/index.ts`? Any layer/scope concerns (see `docs/patterns/effect-ai-gotchas.md`)?
 4. **TDD plan.** This is the most important round — the spec is consumed by a TDD
    workflow (`/tdd` red→green→refactor). Walk the user through it:
-   - **First failing test.** What is the *single smallest* test that proves the feature
+   - **First failing test.** What is the _single smallest_ test that proves the feature
      exists? Name the file (`test/tools/<name>.test.ts`), the `it.effect` description,
      and the assertion. This becomes the red step.
    - **Tier.** Handler-direct only (most cases), toolkit-via-mock (if dispatch changes),
@@ -120,14 +122,17 @@ If they want a tweak, loop back to Step 2 on the specific item.
 # <Feature Name>
 
 ## Goal
+
 <One sentence. What gets added or changed, from the user's point of view.>
 
 ## Requirements
+
 - <Concrete, testable requirement.>
 - <Another. Phrase as observable behavior, not implementation.>
 - <Cover the happy path and the main error/edge cases the user named.>
 
 ## Implementation hints
+
 - <Sibling source file to mirror, by absolute path.>
 - <Sibling test file to mirror, by absolute path — TDD starts here.>
 - <Helpers from `test/utilities.ts` to reuse: `withTmpDir`, `expectLeft`, `mockToolCall`, …>
@@ -136,6 +141,7 @@ If they want a tweak, loop back to Step 2 on the specific item.
 - <Don't over-specify HOW — the implementer picks details if conventions cover them.>
 
 ## Acceptance criteria
+
 TDD order — write the first test, watch it fail, then make it pass. Then the next.
 
 - [ ] **Red:** `test/...:<it.effect description>` exists and fails for the expected reason
@@ -154,7 +160,7 @@ TDD order — write the first test, watch it fail, then make it pass. Then the n
 - **Requirements** are observable behaviors. No "should be clean", "well-tested", "robust".
 - **Implementation hints** reference real files in this repo. If you cite `repos/effect/`
   or `repos/codex/` as a reference, link the path — remember those are read-only.
-- **Acceptance criteria** are TDD-ordered. The first checkbox must be the *red* test —
+- **Acceptance criteria** are TDD-ordered. The first checkbox must be the _red_ test —
   named file, named `it.effect` description, expected failure reason. The implementer
   should be able to write that test before reading the rest of the spec.
 - Every requirement has at least one test checkbox. Every error case has its own test

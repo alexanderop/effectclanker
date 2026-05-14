@@ -11,6 +11,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
+    "jsx": "react-jsx",
 
     "strict": true,
     "skipLibCheck": true,
@@ -22,6 +23,13 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
-  "exclude": ["node_modules", "repos", "dist"]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/test/**/*.ts",
+    "packages/*/test/**/*.tsx",
+    "packages/*/vitest.config.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "repos", "dist", "packages/*/node_modules"]
 }

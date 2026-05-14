@@ -1,5 +1,40 @@
 # Architecture
 
+## Packages
+
+The codebase is split into four Bun workspaces under `packages/`, with strict
+downward layering (`cli → tui → harness → tools`):
+
+| Package                  | Owns                                                                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@effectclanker/tools`   | `Tool.make` specs + handlers, `errors.ts`, `ApprovalPolicy` tag + pure (auto / deny) layers, `PlanStore`.                                                                                  |
+| `@effectclanker/harness` | `HarnessToolkit` composition + `HarnessToolkitLayerBare` / `HarnessToolkitLayer`, `ApprovalInteractiveLayer`.                                                                              |
+| `@effectclanker/tui`     | Ink chat layer (`chat-runtime.tsx`, `chat-ui.tsx`, `chat-state.ts`, `chat.ts`, `clipboard.ts`), `ApprovalInkLayer` + the `ApprovalInk` queue tag, and the `Auto`/`DenyAll` Ink companions. |
+| `@effectclanker/cli`     | `@effect/cli` entry point with `run` and `chat` subcommands; the `bin` target.                                                                                                             |
+
+A package can skip levels (the cli imports `@effectclanker/tools` directly for
+`PlanStore`, `ApprovalAutoApproveLayer`, etc.) but never reaches upward. Each
+`packages/<name>/test/package-boundary.test.ts` reads the manifest and locks
+the rule in.
+
+### Two deliberate boundary decisions
+
+These look fixable until you understand why:
+
+- **`ApprovalDenied` lives in `packages/tools/src/errors.ts`** even though the
+  approval layers in `harness` (interactive) and `tui` (Ink) both `throw` it.
+  Errors are low; layers above import them. There's no circular dep — the
+  upper packages depend on `tools` and reuse the error tag, which is exactly
+  the layering working as intended.
+- **`test/utilities.ts` is duplicated, not shared.** Each package's `test/`
+  has its own `withTmpDir` / `expectLeft` / `withLanguageModel` (the harness
+  copies the fs helpers from tools; tui re-exports). We chose two extra copies
+  of ~10 lines over a `packages/test-utils` workspace — the workspace would
+  cost more in `package.json`, `tsconfig`, and resolution complexity than it
+  would save. Resist consolidating.
+
+## Three Effect-AI layers
+
 Three layers, in increasing order of abstraction. `@effect/ai` provides all
 three; we provide concrete instances.
 
@@ -26,7 +61,7 @@ fields:
 | `failureMode` | `"return"` or `"error"`. **Always `"return"` here.** See [gotchas](./patterns/effect-ai-gotchas.md). |
 
 Tools have no implementation — they're pure specs. Per-tool files in
-`src/tools/` export both the `Tool` and a separate `handler` function.
+`packages/tools/src/` export both the `Tool` and a separate `handler` function.
 
 The provider (Anthropic / OpenAI) converts `parameters` to JSON Schema
 automatically when sending the tool list to the model. We never call
@@ -40,7 +75,7 @@ automatically when sending the tool list to the model. We never call
 runtime provides.
 
 ```ts
-// src/toolkit.ts
+// packages/harness/src/toolkit.ts
 export const HarnessToolkit = Toolkit.make(
   ReadTool,
   WriteTool,
@@ -75,7 +110,7 @@ the model emits a final text response. See
 ## Dataflow: prompt → response
 
 ```
-1. User runs:  bun src/cli.ts run "list ts files"
+1. User runs:  bun packages/cli/src/cli.ts run "list ts files"
                                    │
                                    ▼
 2. @effect/cli parses args  ─→  runCommand handler

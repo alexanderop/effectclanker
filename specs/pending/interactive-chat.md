@@ -1,12 +1,14 @@
 # Interactive Chat
 
 ## Goal
+
 Running `bun src/cli.ts` with no arguments drops the user into an interactive
 multi-turn coding-agent session — type a prompt, see the assistant's text
 stream in live, watch tool calls execute, type the next prompt, conversation
 state is preserved.
 
 ## Requirements
+
 - `bun src/cli.ts` (no subcommand) launches an Ink-rendered chat UI; the
   existing `bun src/cli.ts run "<prompt>"` one-shot path continues to work
   unchanged.
@@ -39,6 +41,7 @@ state is preserved.
   composer empty quits.
 
 ## Implementation hints
+
 - Sibling source for tool-spec + handler shape: `/Users/alexanderopalic/Projects/effectclanker/src/tools/bash.ts`.
 - Sibling source for service + Layer shape: `/Users/alexanderopalic/Projects/effectclanker/src/services/approval-policy.ts` — the new `ApprovalInkLayer` is a fourth case alongside the existing three.
 - Sibling source for service + Layer shape: `/Users/alexanderopalic/Projects/effectclanker/src/services/plan-store.ts` — same `Context.Tag` + `Layer.effect` shape.
@@ -55,6 +58,7 @@ state is preserved.
 - Add `ink` and `react` (and `@types/react`) to `dependencies`. Do not add `ink-testing-library` — UI is verified manually for v1.
 
 ## Acceptance criteria
+
 TDD order — write the first test, watch it fail, then make it pass. Then the next.
 
 - [ ] **Red:** `test/chat.test.ts` › `it.effect("preserves prior turn's tool result across two turns")` exists and fails because `Chat.streamText` (driven through `withLanguageModel({ streamText: scriptedFn })` and `HarnessToolkitLayer`) is not yet wired into a chat-loop module — the `runChatTurn` helper the test imports does not yet exist.

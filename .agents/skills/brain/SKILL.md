@@ -8,7 +8,7 @@ description: >-
 
 # Brain (docs/)
 
-In this repo the persistent-memory vault is `docs/`. It doubles as the project wiki *and* the agent's long-term memory.
+In this repo the persistent-memory vault is `docs/`. It doubles as the project wiki _and_ the agent's long-term memory.
 
 The brain is the foundation of the entire workflow — every agent, skill, and session reads it. Low-quality or speculative content degrades everything downstream. Before adding anything, ask: "Does this genuinely improve how the system operates?" If the answer isn't a clear yes, don't write it.
 
@@ -64,7 +64,7 @@ If you added or removed a file in `docs/principles/` or `docs/plans/`, the auto-
 
 ## Durability Test
 
-Ask: "Would I include this in a prompt for a *different* task?"
+Ask: "Would I include this in a prompt for a _different_ task?"
 
 - **Yes** → write to `docs/`. It's durable knowledge.
 - **No, it's plan-specific** → update the plan's docs instead.
