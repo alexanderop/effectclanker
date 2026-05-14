@@ -56,6 +56,26 @@ handles the CLI binary. If you ever try `bun vitest` and it breaks, that's
 expected — use `bun run test` so the published vitest entrypoint runs
 under Node.
 
+## Installing the CLI globally (`clanker` / `effectclanker`)
+
+`packages/cli/package.json` declares two bins (`clanker`, `effectclanker`),
+both pointing at `./src/cli.ts`. To get them on PATH:
+
+```
+cd packages/cli && bun link
+```
+
+That single command both registers the workspace and symlinks the bins
+into `~/.bun/bin/` (no separate `bun link @effectclanker/cli` step needed
+when you only want global bins, not a project dep).
+
+**Gotcha — the shebang is load-bearing.** `bun link` symlinks the bin
+**source file directly**, so when the shell exec's `clanker` it reads
+`./src/cli.ts` itself. Without `#!/usr/bin/env bun` on line 1, `/bin/sh`
+tries to parse TypeScript and fails with `import: command not found`. The
+file must also be `chmod +x`. Both conditions are already in place; just
+remember if you ever clone the bin pattern into another package.
+
 ## Reference repos under `repos/`
 
 Two vendored git subtrees:

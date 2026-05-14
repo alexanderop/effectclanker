@@ -66,14 +66,14 @@ Run `bun run check` before declaring a change done.
 
 ## Project layout
 
-| Path                    | What it is                                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `packages/tools/`       | One file per tool under `src/`. Each exports a `Tool.make` spec and a handler. Also owns errors + plan store. |
-| `packages/harness/`     | `Toolkit.make(...)` of all tools, plus the harness toolkit layers and the interactive approval layer.         |
-| `packages/tui/`         | Ink chat UI — `chat-runtime.tsx`, `chat-ui.tsx`, and the Ink-backed approval layer.                           |
-| `packages/cli/src/cli.ts` | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`.                              |
-| `docs/`                 | Wiki — start at `docs/index.md`.                                                                              |
-| `repos/`                | Read-only vendored source for `effect`, `codex`, and `pi`.                                                    |
+| Path                      | What it is                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `packages/tools/`         | One file per tool under `src/`. Each exports a `Tool.make` spec and a handler. Also owns errors + plan store. |
+| `packages/harness/`       | `Toolkit.make(...)` of all tools, plus the harness toolkit layers and the interactive approval layer.         |
+| `packages/tui/`           | Ink chat UI — `chat-runtime.tsx`, `chat-ui.tsx`, and the Ink-backed approval layer.                           |
+| `packages/cli/src/cli.ts` | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`.                                |
+| `docs/`                   | Wiki — start at `docs/index.md`.                                                                              |
+| `repos/`                  | Read-only vendored source for `effect`, `codex`, and `pi`.                                                    |
 
 ## Documentation
 

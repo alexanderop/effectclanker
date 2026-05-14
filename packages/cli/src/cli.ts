@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { LanguageModel } from "@effect/ai";
 import { AnthropicClient, AnthropicLanguageModel } from "@effect/ai-anthropic";
 import { Args, Command, Options } from "@effect/cli";

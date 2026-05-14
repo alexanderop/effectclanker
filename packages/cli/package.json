@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
+    "clanker": "./src/cli.ts",
     "effectclanker": "./src/cli.ts"
   },
   "type": "module",
