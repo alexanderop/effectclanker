@@ -54,9 +54,9 @@ For the body, write 4–7 sections. Each section is:
 <p>Why-it-matters paragraph after the demo.</p>
 ```
 
-See `demo-catalog.md` for the five `data-kind` values and their props shapes. The template already contains one of each — use them as live reference.
+See `demo-catalog.md` for the nine `data-kind` values plus the `<aside class="callout">` pattern, with full props shapes. The template already contains one working example of each — use them as live reference.
 
-If a section doesn't need a demo, leave it out — most explainers mix sections with and without demos.
+If a section doesn't need a demo, leave it out — most explainers mix sections with and without demos. **And don't pick the same demo kind twice in a row.** A page full of `step-through`s looks like a single grey wall; mix `flow-diagram`, `scrub-timeline`, `spotlight`, `reveal`, and `callout` asides between them. `demo-catalog.md` has a selection table — read its top before choosing.
 
 **Do not edit anywhere outside the EDIT markers.** The React bootstrap, the demo components, the CSS — all of that is the runtime. Touch it and demos stop rendering.
 
@@ -73,13 +73,15 @@ Read the screenshot. If any panel overflows, any demo is empty, or the prose rea
 ## File map
 
 - `voice.md` — the Josh Comeau voice checklist; read before drafting
-- `demo-catalog.md` — the five demo kinds and their JSON props
+- `demo-catalog.md` — the nine demo kinds + the `callout` aside pattern, with the selection table
 - `template.html` — the page you copy and edit
 
 ## Common failures
 
 - **Generic prose.** Re-read `voice.md`. Every section opens with a hook — a confession, a question, "let's slow down" — never a topic sentence.
+- **Flat page, every demo looks the same.** You used `step-through` or `stack` five times in a row. Open `demo-catalog.md`, read the *Pattern selection* table at the top, then rotate. Aim for at least 4 distinct demo kinds across a 5-section page, plus 1–2 `callout` asides.
 - **Demo doesn't render.** The card shows why. Almost always invalid JSON inside the `<script type="application/json">` (unescaped quote, trailing comma, missing comma between fields) or an unknown `data-kind`.
 - **Missing script.** A `<div class="demo-mount">` with no `<script type="application/json">` child mounts an error. Each demo needs the script.
 - **Overflowing panel.** A line in your JSON is too long for the grid column. Split the string with `\n`.
 - **Wrong `<h2>` ids.** TOC links break silently. Make `id="..."` match `href="#..."`.
+- **`spotlight` line highlight off-by-one.** `line` is 1-based, not 0-based. Line 1 is the first line of `code`.

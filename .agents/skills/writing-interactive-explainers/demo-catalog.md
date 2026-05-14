@@ -1,6 +1,6 @@
 # Demo catalog
 
-Five demo kinds. You drop each one into the HTML body as:
+Nine demo kinds plus the `callout` aside pattern. You drop each demo into the HTML body as:
 
 ```html
 <div class="demo-mount" data-kind="<kind>">
@@ -12,6 +12,32 @@ Five demo kinds. You drop each one into the HTML body as:
 
 **The JSON inside the `<script type="application/json">` is raw.** Use any quotes, apostrophes, angle brackets you like — only the literal characters `</script>` are forbidden (and you'll never need them in a demo body). HTML body strings can contain `<code>`, `<em>`, `<span class='badge ok'>` directly.
 
+## Pattern selection — read this before picking
+
+The reader's eye gets bored when every demo is the same shape. **Rotate kinds across sections; don't pick the same one twice in a row.** A page that's five `step-through`s back-to-back reads like a single grey wall. Mix:
+
+- a **flow** (movement, e.g. `flow-diagram` or `scrub-timeline`)
+- a **structural diagram** (`stack`)
+- an **editable / configurable** demo (`side-by-side` or `checklist-grid`)
+- a **comparison** (`toggle-compare`)
+- a **moment of stillness** (`spotlight` or `reveal`)
+- and a `callout` aside or two for one-sentence emphasis
+
+Pick by the *shape* of the idea, not by what's easiest to fill in:
+
+| If the idea is…                                          | Use                |
+|----------------------------------------------------------|--------------------|
+| layered architecture / N nested concepts                 | `stack`            |
+| "edit this input, see this output"                       | `side-by-side`     |
+| a checklist or sequence the reader clicks through        | `step-through`     |
+| A vs B (default vs override, before vs after)            | `toggle-compare`   |
+| a list of toggleable members that change two derived views | `checklist-grid`   |
+| a sequence the reader should *feel*, not click through   | `scrub-timeline`   |
+| dataflow / request path / pipeline                       | `flow-diagram`     |
+| "what does each part of this exact snippet do?"          | `spotlight`        |
+| "guess first, then I'll show you"                        | `reveal`           |
+| one sentence that deserves to slow the reader down       | `<aside class="callout">` |
+
 ## Contents
 
 - [`stack`](#stack) — vertical N-row architecture diagram
@@ -19,6 +45,11 @@ Five demo kinds. You drop each one into the HTML body as:
 - [`step-through`](#step-through) — numbered timeline with play / back / next
 - [`toggle-compare`](#toggle-compare) — A-vs-B switch, body changes per mode
 - [`checklist-grid`](#checklist-grid) — toggle items, watch two code panels filter
+- [`scrub-timeline`](#scrub-timeline) — drag a slider, frames accumulate; conversation aesthetic
+- [`reveal`](#reveal) — a question with a button that exposes the answer (Shiki-highlighted)
+- [`flow-diagram`](#flow-diagram) — vertical spine of nodes, lights up one at a time on play
+- [`spotlight`](#spotlight) — code on one side, clickable line-pinned annotations on the other
+- [`callout` aside](#callout) — tinted blockquote-style sidebar for one-sentence emphasis
 
 ---
 
@@ -173,3 +204,153 @@ Toggle items in the control row; two Shiki-highlighted code panels show only the
 - Each `items[]` entry's fields are available to the templates as `{fieldName}`.
 - `{Name}` (capitalised) is auto-derived from `name`.
 - `leftItem` / `rightItem` render once per *enabled* item; results are newline-joined and substituted into `{ITEMS}` in the wrap.
+
+---
+
+## scrub-timeline
+
+A horizontal slider drives a frame index; frames appear in sequence as you drag. Frames are styled by `actor` (color-coded left border, uppercase label). This is the **Comeau "scrub through time"** pattern — use it when you want the reader to *feel* the sequence rather than click through it. Perfect for showing a conversation or message thread accumulating.
+
+```html
+<div class="demo-mount" data-kind="scrub-timeline">
+  <script type="application/json">
+    {
+      "label": "drag to play out one agent loop",
+      "frames": [
+        { "actor": "user",      "body": "what's in /etc/hosts?" },
+        { "actor": "assistant", "body": "<code>tool_use: read({ path: \"/etc/hosts\" })</code>" },
+        { "actor": "tool",      "body": "127.0.0.1 localhost" },
+        { "actor": "assistant", "body": "localhost maps to 127.0.0.1." }
+      ]
+    }
+  </script>
+</div>
+```
+
+- `actor`: one of `user` (purple), `assistant` (amber), `tool` (green), `system` (mute). Picks the left-border accent and the small uppercase label.
+- `body` is rendered with `dangerouslySetInnerHTML` — write `<code>`, `<em>`, `<strong>` inline.
+- Provides a slider (range), a `▶ Play` button (auto-advances 1 frame every 650ms), and a `↺ reset`.
+- Aim for 3–6 frames. Past 6 the slider feels chunky.
+
+Distinct from `step-through`: that one uses buttons and a "checklist" feel; this one uses a slider and a "conversation" feel. **Don't use both on the same page unless the contrast is the point.**
+
+---
+
+## reveal
+
+A question, a button, an answer. The button hides the answer until clicked. Once clicked, the answer (Shiki-highlighted) springs in. Forces the reader to *predict before peeking* — pedagogy more than UI.
+
+```html
+<div class="demo-mount" data-kind="reveal">
+  <script type="application/json">
+    {
+      "question": "What JSON does the model emit when it wants to read <code>/etc/hosts</code>?",
+      "buttonLabel": "Reveal the JSON",
+      "lang": "json",
+      "answer": "{\n  \"type\": \"tool_use\",\n  \"name\": \"read\",\n  \"input\": { \"path\": \"/etc/hosts\" }\n}",
+      "afterText": "That's it. The model never reads the file — it just asks."
+    }
+  </script>
+</div>
+```
+
+- `question` is HTML — use `<code>`, `<em>`.
+- `buttonLabel` defaults to `"Reveal"` if omitted.
+- `lang` is any Shiki language id (`ts`, `json`, `bash`, `tsx`, …).
+- `afterText` is optional HTML, rendered below the code after reveal.
+- Best used **once or twice** per page. It loses its punch if every section ends with a button.
+
+---
+
+## flow-diagram
+
+Vertical chain of labeled nodes with `▼` arrows between them. Hit play (or `step ›`) and nodes light up one at a time, accumulating a purple-glow trail. Different shape from `stack`: `stack` is static structure, `flow-diagram` is a sequence in time.
+
+```html
+<div class="demo-mount" data-kind="flow-diagram">
+  <script type="application/json">
+    {
+      "label": "one round-trip",
+      "nodes": [
+        { "label": "user prompt" },
+        { "label": "<code>LanguageModel.generateText</code>" },
+        { "label": "Anthropic API (one HTTP call)" },
+        { "label": "<code>Toolkit.handle</code> dispatches" },
+        { "label": "<code>readHandler</code> reads the file" },
+        { "label": "<code>tool_result</code> encoded into the response" }
+      ],
+      "arrowChar": "▼"
+    }
+  </script>
+</div>
+```
+
+- `label` is HTML — `<code>`, `<em>`, `<strong>` all work.
+- `arrowChar` defaults to `▼`; pass `"↓"`, `"⇣"`, or `"⟶"` if you want a different glyph.
+- Aim for 4–8 nodes. Past 8, the spine starts feeling like a step-through.
+
+Use this for **request paths, pipelines, sequences with causality** — anywhere the next thing happens *because of* the previous thing. For "the 3 layers of our architecture," use `stack` instead.
+
+---
+
+## spotlight
+
+A code snippet on one side, clickable annotation cards on the other. Click a card to anchor the reader's eye to a specific line of the code (purple left-border highlight). Best for "what does each part of *this exact line* do."
+
+```html
+<div class="demo-mount" data-kind="spotlight">
+  <script type="application/json">
+    {
+      "label": "anatomy of Tool.make",
+      "lang": "ts",
+      "code": "Tool.make(\"read\", {\n  description: \"Read a file.\",\n  parameters: { path: Schema.String },\n  success: Schema.String,\n  failure: FileError,\n  failureMode: \"return\",\n})",
+      "notes": [
+        { "line": 1, "label": "the name",    "body": "What the model sees when picking a tool." },
+        { "line": 3, "label": "parameters",  "body": "Effect Schema → JSON Schema, automatically." },
+        { "line": 5, "label": "failure",     "body": "Typed failure schema. Keeps failures as data." },
+        { "line": 6, "label": "failureMode", "body": "<strong>Always</strong> <code>\"return\"</code>." }
+      ]
+    }
+  </script>
+</div>
+```
+
+- `line` is 1-based — line 1 is the first line of `code`.
+- `label` is a short uppercase-ish header on each note card.
+- `body` is HTML (`<code>`, `<strong>`, `<em>`).
+- The first note is selected by default.
+- Aim for 3–6 notes. More than 6 and the right column gets taller than the code.
+
+Keep the snippet short — under 10 lines. Past 12 lines the line-highlight is harder to see because the code panel doesn't scroll on note click.
+
+---
+
+## callout (HTML aside — not a demo)
+
+For one-sentence emphasis that doesn't deserve a full demo. Plain HTML, no JSON, no `demo-mount`. Three tints: default (purple), `warn` (amber), `ok` (green), `bad` (red).
+
+```html
+<aside class="callout">
+  <strong>Mental model</strong>
+  <p>The model never touches your filesystem. It asks; your handler runs.</p>
+</aside>
+
+<aside class="callout warn">
+  <strong>Gotcha</strong>
+  <p><code>failureMode</code> defaults to <code>"error"</code>. That default is <em>wrong</em>.</p>
+</aside>
+
+<aside class="callout ok">
+  <strong>Rule of thumb</strong>
+  <p>If your section is a <em>flow</em>, use <code>flow-diagram</code>.</p>
+</aside>
+
+<aside class="callout bad">
+  <strong>Don't</strong>
+  <p>Don't put a credential-reading Layer in <code>MainLive</code>.</p>
+</aside>
+```
+
+- The first `<strong>` becomes the small uppercase tinted title.
+- Subsequent `<p>` tags are body prose.
+- Use sparingly — two or three per page. They lose impact if there's one in every section.

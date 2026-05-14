@@ -31,6 +31,7 @@
 ## Other
 - [[architecture]]
 - [[backlog]]
+- [[guides-adding-a-tool]]
 - [[overview]]
 - [[testing-strategy]]
 - [[tooling]]
