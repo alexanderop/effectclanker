@@ -1,20 +1,14 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { globHandler } from "../../src/tools/glob.ts";
-import { withTmpDir } from "../utilities.ts";
+import { withTmpDir, writeFiles } from "../utilities.ts";
 
 describe("globHandler", () => {
   it.effect("finds files matching **/*.ts in nested directories", () =>
     withTmpDir("glob", (dir) =>
       Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          await fs.writeFile(path.join(dir, "a.ts"), "");
-          await fs.mkdir(path.join(dir, "sub"));
-          await fs.writeFile(path.join(dir, "sub", "b.ts"), "");
-          await fs.writeFile(path.join(dir, "c.txt"), "");
-        });
+        yield* writeFiles(dir, { "a.ts": "", "sub/b.ts": "", "c.txt": "" });
         const result = yield* globHandler({ pattern: "**/*.ts", cwd: dir });
         // cwd-relative paths; exact match guards against extra hits.
         expect(result.toSorted()).toEqual(["a.ts", path.join("sub", "b.ts")].toSorted());
@@ -25,11 +19,7 @@ describe("globHandler", () => {
   it.effect("'?' matches exactly one character", () =>
     withTmpDir("glob", (dir) =>
       Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          await fs.writeFile(path.join(dir, "a1.ts"), "");
-          await fs.writeFile(path.join(dir, "a12.ts"), "");
-          await fs.writeFile(path.join(dir, "ab.ts"), "");
-        });
+        yield* writeFiles(dir, { "a1.ts": "", "a12.ts": "", "ab.ts": "" });
         const result = yield* globHandler({ pattern: "a?.ts", cwd: dir });
         expect(result.toSorted()).toEqual(["a1.ts", "ab.ts"]);
       }),
@@ -39,11 +29,7 @@ describe("globHandler", () => {
   it.effect("'[a-z]' character class restricts matches", () =>
     withTmpDir("glob", (dir) =>
       Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          await fs.writeFile(path.join(dir, "a.ts"), "");
-          await fs.writeFile(path.join(dir, "b.ts"), "");
-          await fs.writeFile(path.join(dir, "1.ts"), "");
-        });
+        yield* writeFiles(dir, { "a.ts": "", "b.ts": "", "1.ts": "" });
         const result = yield* globHandler({ pattern: "[a-z].ts", cwd: dir });
         expect(result.toSorted()).toEqual(["a.ts", "b.ts"]);
       }),
@@ -53,7 +39,7 @@ describe("globHandler", () => {
   it.effect("returns an empty array when no files match", () =>
     withTmpDir("glob", (dir) =>
       Effect.gen(function* () {
-        yield* Effect.promise(() => fs.writeFile(path.join(dir, "a.ts"), ""));
+        yield* writeFiles(dir, { "a.ts": "" });
         const result = yield* globHandler({ pattern: "**/*.nope", cwd: dir });
         expect(result).toEqual([]);
       }),
@@ -63,12 +49,7 @@ describe("globHandler", () => {
   it.effect("respects explicit cwd — files outside cwd are not matched", () =>
     withTmpDir("glob", (dir) =>
       Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          await fs.mkdir(path.join(dir, "inside"));
-          await fs.writeFile(path.join(dir, "inside", "a.ts"), "");
-          // Sibling that's outside the configured cwd.
-          await fs.writeFile(path.join(dir, "outside.ts"), "");
-        });
+        yield* writeFiles(dir, { "inside/a.ts": "", "outside.ts": "" });
         const result = yield* globHandler({
           pattern: "**/*.ts",
           cwd: path.join(dir, "inside"),

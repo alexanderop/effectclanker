@@ -163,8 +163,8 @@ task and one that pauses 4 times.
 `repos/codex/codex-rs/core/src/mcp.rs`,
 `repos/codex/codex-rs/mcp-server/src/codex_tool_runner.rs`
 
-**Why:** Codex both *exposes* itself as an MCP server (so other agents can
-call it) and *consumes* external MCP servers (so the user can plug in any
+**Why:** Codex both _exposes_ itself as an MCP server (so other agents can
+call it) and _consumes_ external MCP servers (so the user can plug in any
 MCP-compatible tool — fetch, git, filesystem, etc.). The harness has
 neither half. MCP is the ecosystem standard for tool plug-in, and
 supporting it makes every third-party MCP server available as a

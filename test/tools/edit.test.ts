@@ -2,21 +2,8 @@ import { describe, expect, it } from "@effect/vitest";
 import { NodeContext } from "@effect/platform-node";
 import { Effect } from "effect";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { editHandler } from "../../src/tools/edit.ts";
-import { expectLeft, withTmpDir } from "../utilities.ts";
-
-const withTmpFile = <A, E, R>(
-  initial: string,
-  use: (file: string) => Effect.Effect<A, E, R>,
-): Effect.Effect<A, E, R> =>
-  withTmpDir("edit", (dir) =>
-    Effect.gen(function* () {
-      const file = path.join(dir, "f.txt");
-      yield* Effect.promise(() => fs.writeFile(file, initial, "utf8"));
-      return yield* use(file);
-    }),
-  );
+import { expectLeft, withTmpFile } from "../utilities.ts";
 
 describe("editHandler", () => {
   it.effect("replaces a unique match", () =>

@@ -61,12 +61,12 @@ sandbox backends come in stories 2 (Seatbelt) and 3 (Landlock).
 
 ### From the Codex repo (`repos/codex/`, read-only reference material)
 
-| Path | Why you're reading it |
-| ---- | --------------------- |
-| `codex-rs/protocol/src/protocol.rs:983-1031` | The canonical `SandboxPolicy` enum. **This is what you mirror in TypeScript.** Note: the backlog cites `sandboxing/src/lib.rs`, but the enum actually lives in `protocol.rs` — `sandboxing/src/lib.rs` only re-exports types from `manager.rs`. |
-| `codex-rs/sandboxing/src/manager.rs:131-261` | `SandboxManager::transform`. The shape of the call site: a struct of "command + cwd + env + permissions" gets transformed into a different command. You're building the TypeScript equivalent of the **input** to `transform`, plus the `SandboxType::None` arm of the match. |
-| `codex-rs/sandboxing/src/manager.rs:22-39` | `SandboxType` enum. Tells you what variants the seam needs to support eventually. For this story, only `None` matters. |
-| `codex-rs/sandboxing/src/seatbelt.rs:602-741` | Skim only. `create_seatbelt_command_args` is what story 2 will port. You do **not** call this in story 1 — but glancing at it tells you why the seam has the shape it does (it transforms `argv` + env + cwd into a wrapped argv). |
+| Path                                          | Why you're reading it                                                                                                                                                                                                                                                         |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex-rs/protocol/src/protocol.rs:983-1031`  | The canonical `SandboxPolicy` enum. **This is what you mirror in TypeScript.** Note: the backlog cites `sandboxing/src/lib.rs`, but the enum actually lives in `protocol.rs` — `sandboxing/src/lib.rs` only re-exports types from `manager.rs`.                               |
+| `codex-rs/sandboxing/src/manager.rs:131-261`  | `SandboxManager::transform`. The shape of the call site: a struct of "command + cwd + env + permissions" gets transformed into a different command. You're building the TypeScript equivalent of the **input** to `transform`, plus the `SandboxType::None` arm of the match. |
+| `codex-rs/sandboxing/src/manager.rs:22-39`    | `SandboxType` enum. Tells you what variants the seam needs to support eventually. For this story, only `None` matters.                                                                                                                                                        |
+| `codex-rs/sandboxing/src/seatbelt.rs:602-741` | Skim only. `create_seatbelt_command_args` is what story 2 will port. You do **not** call this in story 1 — but glancing at it tells you why the seam has the shape it does (it transforms `argv` + env + cwd into a wrapped argv).                                            |
 
 Don't get distracted by `landlock.rs`, `bwrap.rs`, or the `.sbpl` files. Those
 are story-2/story-3 territory. If you start reading them you will lose the
@@ -74,25 +74,25 @@ afternoon.
 
 ### From this repo
 
-| Path | Why you're reading it |
-| ---- | --------------------- |
-| [`src/services/approval-policy.ts`](../../../src/services/approval-policy.ts) | **Read this twice.** This is the template you are copying. Same shape: a `Context.Tag`, a service interface, multiple `Layer` values (auto / interactive / deny). Your `Sandbox` service will have exactly this structure with `SandboxNoopLayer` playing the role of `ApprovalAutoApproveLayer`. |
-| [`src/services/plan-store.ts`](../../../src/services/plan-store.ts) | Shorter example of the same pattern, but with `Ref` state inside the layer. You don't need state — just structure — so use `approval-policy.ts` as the primary template. |
-| [`src/tools/bash.ts`](../../../src/tools/bash.ts) | The handler you are modifying. Specifically lines 79-139 (`bashHandler`). The `Command.make(...)` → `Command.start(cmd)` block is the bit you're routing through `Sandbox.run`. |
-| [`src/toolkit.ts:35-51`](../../../src/toolkit.ts) | The "context capture" trick used by `HarnessToolkitLayerBare`. You need to add `Sandbox` to the captured context tuple. |
-| [`docs/architecture.md`](../../architecture.md) | The three-layer model. Make sure you can name `Tool` / `Toolkit` / `LanguageModel` before you change `bash.ts` — every change touches the boundary between layer 1 (Tool) and the dependency context that handlers run in. |
-| [`docs/patterns/effect-ai-gotchas.md`](../../patterns/effect-ai-gotchas.md) §2 | "Scope credential-requiring layers to the handler, not `MainLive`." The `Sandbox` layer is *not* credential-requiring, so it can live at the bare-toolkit level — but the reasoning in §2 is the principle you're applying when deciding *where* to provide it. |
+| Path                                                                           | Why you're reading it                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`src/services/approval-policy.ts`](../../../src/services/approval-policy.ts)  | **Read this twice.** This is the template you are copying. Same shape: a `Context.Tag`, a service interface, multiple `Layer` values (auto / interactive / deny). Your `Sandbox` service will have exactly this structure with `SandboxNoopLayer` playing the role of `ApprovalAutoApproveLayer`. |
+| [`src/services/plan-store.ts`](../../../src/services/plan-store.ts)            | Shorter example of the same pattern, but with `Ref` state inside the layer. You don't need state — just structure — so use `approval-policy.ts` as the primary template.                                                                                                                          |
+| [`src/tools/bash.ts`](../../../src/tools/bash.ts)                              | The handler you are modifying. Specifically lines 79-139 (`bashHandler`). The `Command.make(...)` → `Command.start(cmd)` block is the bit you're routing through `Sandbox.run`.                                                                                                                   |
+| [`src/toolkit.ts:35-51`](../../../src/toolkit.ts)                              | The "context capture" trick used by `HarnessToolkitLayerBare`. You need to add `Sandbox` to the captured context tuple.                                                                                                                                                                           |
+| [`docs/architecture.md`](../../architecture.md)                                | The three-layer model. Make sure you can name `Tool` / `Toolkit` / `LanguageModel` before you change `bash.ts` — every change touches the boundary between layer 1 (Tool) and the dependency context that handlers run in.                                                                        |
+| [`docs/patterns/effect-ai-gotchas.md`](../../patterns/effect-ai-gotchas.md) §2 | "Scope credential-requiring layers to the handler, not `MainLive`." The `Sandbox` layer is _not_ credential-requiring, so it can live at the bare-toolkit level — but the reasoning in §2 is the principle you're applying when deciding _where_ to provide it.                                   |
 
 ### From the `@effect/*` source (`repos/effect/`)
 
 Treat these as the source of truth for API shapes. Don't guess — read.
 
-| Path | Why |
-| ---- | --- |
-| `repos/effect/packages/effect/src/Context.ts` (search for `Tag`) | How `Context.Tag` is declared. The class-extends-Tag idiom in `approval-policy.ts:16-19` is the canonical form. |
-| `repos/effect/packages/effect/src/Layer.ts` (search for `succeed`) | Difference between `Layer.succeed`, `Layer.effect`, `Layer.scoped`. You want `Layer.succeed` here (no setup effect, no resources). |
-| `repos/effect/packages/platform/src/Command.ts` | The `Command.make` / `Command.env` / `Command.workingDirectory` / `Command.start` API. The no-op layer's body will be a small wrapper around exactly these calls — see how `bashHandler` uses them today, around `src/tools/bash.ts:90-97`. |
-| `repos/effect/packages/effect/src/Schema.ts` (search for `TaggedStruct` and `Union`) | How `Schema.Union` of `Schema.TaggedStruct`s decodes a `{ type: "..." }` JSON object. This is what you'll use to mirror Codex's `#[serde(tag = "type", rename_all = "kebab-case")]`. |
+| Path                                                                                 | Why                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `repos/effect/packages/effect/src/Context.ts` (search for `Tag`)                     | How `Context.Tag` is declared. The class-extends-Tag idiom in `approval-policy.ts:16-19` is the canonical form.                                                                                                                             |
+| `repos/effect/packages/effect/src/Layer.ts` (search for `succeed`)                   | Difference between `Layer.succeed`, `Layer.effect`, `Layer.scoped`. You want `Layer.succeed` here (no setup effect, no resources).                                                                                                          |
+| `repos/effect/packages/platform/src/Command.ts`                                      | The `Command.make` / `Command.env` / `Command.workingDirectory` / `Command.start` API. The no-op layer's body will be a small wrapper around exactly these calls — see how `bashHandler` uses them today, around `src/tools/bash.ts:90-97`. |
+| `repos/effect/packages/effect/src/Schema.ts` (search for `TaggedStruct` and `Union`) | How `Schema.Union` of `Schema.TaggedStruct`s decodes a `{ type: "..." }` JSON object. This is what you'll use to mirror Codex's `#[serde(tag = "type", rename_all = "kebab-case")]`.                                                        |
 
 ---
 
@@ -159,11 +159,11 @@ In `bashHandler`, replace the line that calls `Command.start(cmd)` directly:
 
 ```ts
 // before
-const process = yield* Command.start(cmd);
+const process = yield * Command.start(cmd);
 
 // after
-const sandbox = yield* Sandbox;
-const process = yield* sandbox.run(cmd, { _tag: "danger-full-access" });
+const sandbox = yield * Sandbox;
+const process = yield * sandbox.run(cmd, { _tag: "danger-full-access" });
 ```
 
 Add `Sandbox` to the imports and to the handler's `R` channel:
@@ -178,7 +178,7 @@ export const bashHandler = ({...}: BashParams): Effect.Effect<
 
 > **Why `danger-full-access` for now?** We're passing the policy through the
 > seam but not enforcing it — the no-op layer ignores its second argument. The
-> CLI flag that lets the user *choose* a policy is story 4. Until then,
+> CLI flag that lets the user _choose_ a policy is story 4. Until then,
 > hardcoding the most permissive variant matches today's behaviour and makes
 > it obvious where the wiring will plug in later.
 
@@ -187,9 +187,9 @@ export const bashHandler = ({...}: BashParams): Effect.Effect<
 Extend the `Effect.context<...>` tuple in `HarnessToolkitLayerBare`:
 
 ```ts
-const context = yield* Effect.context<
-  FileSystem.FileSystem | ApprovalPolicy | PlanStore | CommandExecutor | Sandbox
->();
+const context =
+  yield *
+  Effect.context<FileSystem.FileSystem | ApprovalPolicy | PlanStore | CommandExecutor | Sandbox>();
 ```
 
 Add `SandboxNoopLayer` to the self-contained `HarnessToolkitLayer`:
@@ -198,7 +198,7 @@ Add `SandboxNoopLayer` to the self-contained `HarnessToolkitLayer`:
 export const HarnessToolkitLayer = HarnessToolkitLayerBare.pipe(
   Layer.provide(ApprovalAutoApproveLayer),
   Layer.provide(PlanStoreLayer),
-  Layer.provide(SandboxNoopLayer),     // <- new
+  Layer.provide(SandboxNoopLayer), // <- new
   Layer.provide(NodeContext.layer),
 );
 ```
@@ -341,7 +341,7 @@ Should behave identically to before this change.
   filesystem-only and don't go through `Sandbox` — they are gated by
   `ApprovalPolicy`).
 - Updating `docs/architecture.md` with a sandbox diagram. Worth doing
-  eventually, but only once a *real* backend exists; otherwise the diagram
+  eventually, but only once a _real_ backend exists; otherwise the diagram
   describes a no-op.
 
 If you find yourself drawn to any of the above, write a note in the PR

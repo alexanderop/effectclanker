@@ -20,10 +20,13 @@ calls tools until it has an answer.
    oxlint, oxfmt, TypeScript. What `bun run check` actually does.
 3. **[Adding a new tool](./guides/adding-a-tool.md)** — the recipe. The
    most common task in this codebase.
-4. **[Testing with Effect](./guides/testing.md)** — `it.effect`, the
+4. **[Testing strategy](./testing-strategy.md)** — the pyramid: why we
+   don't hit real LLMs in CI, what each tier tests, how this mirrors
+   `pi` and `codex`. Read this _before_ the mechanics doc below.
+5. **[Testing with Effect](./guides/testing.md)** — `it.effect`, the
    `withLanguageModel` mock, handler-direct vs toolkit-via-mock test
    styles, `Effect.acquireUseRelease` for tmp dirs.
-5. **[`@effect/ai` gotchas](./patterns/effect-ai-gotchas.md)** — three
+6. **[`@effect/ai` gotchas](./patterns/effect-ai-gotchas.md)** — three
    non-obvious things that bit us. Read once; refer back when something
    breaks unexpectedly.
 
@@ -31,13 +34,15 @@ calls tools until it has an answer.
 
 ## Reference repositories
 
-`repos/effect/` and `repos/codex/` are vendored as git subtrees. Treat as
-**read-only**. When in doubt about an `@effect/*` API or how Codex does X,
-read the source there instead of guessing or asking an LLM. The squashed
-upstream lives at:
+`repos/effect/`, `repos/codex/`, and `repos/pi/` are vendored as git
+subtrees. Treat as **read-only**. When in doubt about an `@effect/*`
+API, how Codex does X, or how `pi` solves a similar agent-harness
+problem, read the source there instead of guessing or asking an LLM.
+The squashed upstreams live at:
 
 - `repos/effect/` ← https://github.com/Effect-TS/effect
 - `repos/codex/` ← https://github.com/openai/codex.git
+- `repos/pi/` ← https://github.com/earendil-works/pi.git
 
 This is also why the linters and formatters carry explicit `repos/**`
 ignore patterns — see [tooling](./tooling.md).

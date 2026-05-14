@@ -1,5 +1,9 @@
 # Testing with Effect
 
+> This doc is the _mechanics_. For _why_ the suite is shaped the way it
+> is — the diamond pyramid, the no-real-LLM-in-CI rule, the three
+> tiers — read [`../testing-strategy.md`](../testing-strategy.md) first.
+
 Two test styles, both in use, both required for a new tool.
 
 | Style            | File location               | Drives                                      | Use when                                           |
@@ -34,23 +38,45 @@ it; assertion failures inside the generator are caught and reported by
 Vitest normally. **Do not** use `async function*` — `it.effect` expects
 a sync generator that yields effects.
 
-## Resource setup with `withTmpDir`
+## Resource setup with `withTmpDir`, `withTmpFile`, `writeFiles`
 
-Most handler tests need a tmp dir. Import the shared helper from
-`test/utilities.ts` — it wraps `Effect.acquireUseRelease` so the cleanup
-runs even on failure, and prefixes the dir name so leaked tmpdirs are
-attributable to a specific test file.
+Three layered helpers in `test/utilities.ts`. Reach for the most specific
+one that fits:
+
+- **`withTmpFile(initial, use)`** — fresh tmp dir + a single file
+  (`f.txt`) preloaded with `initial`. Use when the test only needs one
+  file (read, edit, write tools).
+- **`writeFiles(dir, { "a.ts": "", "sub/b.ts": "" })`** — seed a
+  directory tree from a path-to-contents map. Intermediate dirs are
+  created automatically; entries are written in parallel.
+- **`withTmpDir(prefix, use)`** — the primitive. Use when the test needs
+  to manipulate the directory itself (e.g. compute paths, mkdir later)
+  or when files are seeded incrementally.
+
+All three wrap `Effect.acquireUseRelease` so cleanup runs even on
+failure or Effect interruption. The dir name is prefixed `ecl-<scope>-`
+so leaked tmpdirs are attributable to a specific test.
 
 ```ts
-import { withTmpDir } from "../utilities.ts";
+import { withTmpFile, withTmpDir, writeFiles } from "../utilities.ts";
 
-it.effect("...", () =>
-  withTmpDir("read", (dir) =>
+// Single-file test
+it.effect("reads full file content", () =>
+  withTmpFile("alpha\nbeta\ngamma", (file) =>
     Effect.gen(function* () {
-      const file = path.join(dir, "a.txt");
-      yield* Effect.promise(() => fs.writeFile(file, "hi"));
       const result = yield* readHandler({ path: file });
-      expect(result).toBe("hi");
+      expect(result).toBe("alpha\nbeta\ngamma");
+    }),
+  ),
+);
+
+// Directory-tree test
+it.effect("finds files matching **/*.ts", () =>
+  withTmpDir("glob", (dir) =>
+    Effect.gen(function* () {
+      yield* writeFiles(dir, { "a.ts": "", "sub/b.ts": "", "c.txt": "" });
+      const result = yield* globHandler({ pattern: "**/*.ts", cwd: dir });
+      expect(result.toSorted()).toEqual(["a.ts", "sub/b.ts"]);
     }),
   ),
 );
@@ -94,68 +120,91 @@ almost always enough.
 
 ---
 
-## Mocking `LanguageModel` via `withLanguageModel`
+## Mocking the LLM — `runToolkit` + `mockText` / `mockToolCall`
 
-Toolkit-via-mock tests use a copy of `@effect/ai`'s internal test helper.
-It lives at `test/utilities.ts` and mirrors
-`repos/effect/packages/ai/ai/test/utilities.ts` line-for-line.
+Toolkit-via-mock tests script what the (fake) model would say, then run
+the real toolkit and assert on the response.
 
-Use it to script what the (fake) model would say:
+The high-level helper is `runToolkit(options)`. It wraps the standard
+incantation — `LanguageModel.generateText({ prompt, toolkit: HarnessToolkit })`
+piped through `withLanguageModel` and provided with `HarnessToolkitLayer`.
+Scripted parts come from the `mockText` and `mockToolCall` factories so
+call sites don't open-code `Response.PartEncoded` shapes.
 
 ```ts
-import { LanguageModel } from "@effect/ai";
-import { HarnessToolkit, HarnessToolkitLayer } from "../src/toolkit.ts";
-import { withLanguageModel } from "./utilities.ts";
+import { Effect } from "effect";
+import { describe, expect, it } from "@effect/vitest";
+import { mockText, mockToolCall, runToolkit, withTmpDir, writeFiles } from "./utilities.ts";
 
 it.effect("dispatches a glob tool call to its handler", () =>
-  Effect.gen(function* () {
-    const response = yield* LanguageModel.generateText({
-      prompt: "list ts files",
-      toolkit: HarnessToolkit,
-    }).pipe(
-      withLanguageModel({
-        generateText: [
-          { type: "tool-call", id: "c1", name: "glob", params: { pattern: "src/**/*.ts" } },
-        ],
-      }),
-      Effect.provide(HarnessToolkitLayer),
-    );
+  withTmpDir("glob-dispatch", (dir) =>
+    Effect.gen(function* () {
+      yield* writeFiles(dir, { "a.ts": "", "b.ts": "" });
+      const response = yield* runToolkit({
+        prompt: "list ts files",
+        parts: [mockToolCall("glob", { pattern: "**/*.ts", cwd: dir })],
+      });
 
-    expect(response.toolCalls).toHaveLength(1);
-    expect(response.toolResults[0]?.result).toEqual(expect.any(Array));
+      expect(response.toolCalls).toHaveLength(1);
+      expect(response.toolResults[0]?.result).toEqual(expect.any(Array));
+    }),
+  ),
+);
+```
+
+Things to know:
+
+- **`mockText(text)`** → `{ type: "text", text }`.
+  **`mockToolCall(name, params, { id? })`** → `{ type: "tool-call", id, name, params }`.
+  Auto-generates a unique id; pass `{ id }` to assert on a specific value.
+  Both return `Response.PartEncoded`. Mirrors pi's `fauxText` / `fauxToolCall`.
+- **`runToolkit({ prompt, parts })`** — `parts` is either an array OR a
+  function `(opts) => parts | Effect<parts>`. Use the function form for
+  multi-turn scenarios that need to branch on call number or inspect the
+  incoming prompt.
+- **The handlers are not mocked** — only the model. `runToolkit` provides
+  `HarnessToolkitLayer`, so dispatched tool calls execute real handlers
+  against the real filesystem.
+- **Failure-channel assertions**: `runToolkit` returns an Effect, so you
+  can chain `.pipe(Effect.flip)` to invert success/failure when asserting
+  on the loop's _own_ error channel (e.g. `MalformedOutput` from schema
+  decoding). See `test/toolkit.test.ts` for the pattern.
+
+Multi-turn example — the `parts` function closes over a counter to return
+different responses across calls:
+
+```ts
+it.effect("two-turn flow", () =>
+  Effect.gen(function* () {
+    let call = 0;
+    const parts = () => {
+      call++;
+      return call === 1 ? [mockToolCall("glob", { pattern: "**/*.ts" })] : [mockText("done")];
+    };
+
+    const turn1 = yield* runToolkit({ prompt: "list files", parts });
+    const turn2 = yield* runToolkit({ prompt: "anything else?", parts });
+    expect(turn2.text).toBe("done");
   }),
 );
 ```
 
-Things to know about `withLanguageModel`:
+### When to drop down to `withLanguageModel` directly
 
-- `generateText` accepts an array of `Response.PartEncoded` parts, OR a
-  function `(opts) => parts | Effect<parts>`. Use the function form if
-  the mock needs to react to the conversation state.
-- Each scripted part is a discriminated union — `{ type: "text", text }`,
-  `{ type: "tool-call", id, name, params }`, etc.
-- The framework runs the rest of the loop normally: it dispatches the
-  scripted tool calls through the real `HarnessToolkitLayer`, executes
-  real handlers, and assembles the final response. **The handlers are
-  not mocked** — only the model is.
-- For a multi-turn scenario where the mock returns different parts on
-  each call, capture state in the function form:
-  ```ts
-  let call = 0;
-  withLanguageModel({
-    generateText: () => {
-      call++;
-      return call === 1
-        ? [{ type: "tool-call", id: "c1", name: "glob", params: { pattern: "*" } }]
-        : [{ type: "text", text: "done" }];
-    },
-  });
-  ```
+`runToolkit` is built on `withLanguageModel`, which is itself a mirror of
+`repos/effect/packages/ai/ai/test/utilities.ts`. Drop down to it directly
+only when you need to:
 
-Don't reach for this helper in handler-direct tests — those test the
-handler, not the loop. Use it only when you need to assert behaviour
-that involves the spec-to-handler wiring or the loop itself (failure
-handling, tool-call dispatch).
+- Use a `Toolkit` other than `HarnessToolkit` (none exist yet).
+- Script `streamText` instead of `generateText` (no current tests do
+  this; the helper supports both).
+
+For everything else, prefer `runToolkit` — the wrapped form keeps the
+`generateText` + `pipe` + `Effect.provide` boilerplate out of test bodies.
+
+Don't reach for either helper in handler-direct tests — those test the
+handler, not the loop. Use them only when you need to assert behaviour
+that involves the spec-to-handler wiring or the loop itself.
 
 ---
 

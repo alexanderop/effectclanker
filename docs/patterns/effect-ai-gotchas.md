@@ -188,6 +188,34 @@ Put ignores in `.oxfmtrc.json`:
 }
 ```
 
+### `oxfmt` mangles `yield*` in markdown TS code blocks
+
+In a fenced ` ```ts ` block inside a `.md` file, a bare `yield* foo` on a
+line that also contains `=` (e.g. `const x = yield* foo(...)`) gets
+rewritten to `yield * foo` — invalid JavaScript. oxfmt's markdown parser
+treats the unpaired `*` as italic emphasis even inside a fenced code
+block. `yield*` lines outside an `=` assignment are usually left alone.
+
+Workaround: wrap the snippet inside an `Effect.gen(function* () { … })`.
+That pairs the asterisks (the `function*` and `yield*` both have one),
+which calms the parser. This is also more honest — you can only `yield*`
+inside a generator, so the snippet was incomplete without it.
+
+```ts
+// Don't: bare `yield*` on assignment lines gets mangled.
+const turn1 = yield* runToolkit({ ... });
+
+// Do: wrap in Effect.gen so `function*` pairs with `yield*`.
+it.effect("...", () =>
+  Effect.gen(function* () {
+    const turn1 = yield* runToolkit({ ... });
+  }),
+);
+```
+
+The real `.ts` test files are unaffected — they go through `tsc` and
+`oxlint`, not the markdown formatter.
+
 ### `oxlint` flags `_tag` as a dangling underscore
 
 `_tag` is the Effect idiom for tagged-union discriminants (`Data.TaggedError`,

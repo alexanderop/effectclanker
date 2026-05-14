@@ -66,15 +66,15 @@ Run `bun run check` before declaring a change done.
 
 ## Project layout
 
-| Path                   | What it is                                                                     |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| `src/tools/*.ts`       | One file per tool. Each exports a `Tool.make` spec and a handler function.     |
-| `src/toolkit.ts`       | `Toolkit.make(...)` of all tools, plus `.toLayer({...})` wiring handlers.      |
-| `src/cli.ts`           | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`. |
-| `src/services/`        | Cross-cutting services (approval policy, plan store).                          |
-| `test/`                | Handler-direct tests and end-to-end toolkit tests.                             |
-| `docs/`                | Wiki — start at `docs/index.md`.                                               |
-| `repos/`               | Read-only vendored source for `effect` and `codex`.                            |
+| Path             | What it is                                                                     |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `src/tools/*.ts` | One file per tool. Each exports a `Tool.make` spec and a handler function.     |
+| `src/toolkit.ts` | `Toolkit.make(...)` of all tools, plus `.toLayer({...})` wiring handlers.      |
+| `src/cli.ts`     | `@effect/cli` entry point. Wires `AnthropicClient` + `AnthropicLanguageModel`. |
+| `src/services/`  | Cross-cutting services (approval policy, plan store).                          |
+| `test/`          | Handler-direct tests and end-to-end toolkit tests.                             |
+| `docs/`          | Wiki — start at `docs/index.md`.                                               |
+| `repos/`         | Read-only vendored source for `effect` and `codex`.                            |
 
 ## Documentation
 

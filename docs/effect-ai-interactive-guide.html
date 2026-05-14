@@ -1,0 +1,1312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>An Interactive Guide to Effect AI Tooling</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://esm.sh" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet" />
+    <style>
+      :root {
+        --bg:            #0b0d12;
+        --bg-elev:       #11141b;
+        --bg-card:       #161a23;
+        --bg-card-2:     #1c2230;
+        --border:        #262c3a;
+        --border-strong: #3a4256;
+        --text:          #e7ecf3;
+        --text-dim:      #9aa3b2;
+        --text-faint:    #6c7484;
+        --accent:        #c4b5fd;
+        --accent-strong: #a78bfa;
+        --hot:           #fbbf24;
+        --good:          #4ade80;
+        --bad:           #f87171;
+        --code-bg:       #0f1219;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { background: var(--bg); }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        font-size: 17px;
+        line-height: 1.65;
+        font-weight: 400;
+      }
+      code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+      a { color: var(--accent-strong); text-decoration: none; border-bottom: 1px solid rgba(167,139,250,0.3); }
+      a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+      header.hero {
+        padding: 80px 32px 40px;
+        max-width: 920px;
+        margin: 0 auto;
+        background:
+          radial-gradient(ellipse 800px 280px at 50% -80px, rgba(167,139,250,0.18), transparent 60%),
+          radial-gradient(ellipse 600px 200px at 80% 0px, rgba(251,191,36,0.08), transparent 60%);
+      }
+      header.hero h1 {
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.1;
+        margin: 0 0 16px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        background: linear-gradient(180deg, #ffffff 0%, #c4b5fd 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      header.hero p.kicker {
+        font-size: 19px;
+        color: var(--text-dim);
+        margin: 0;
+        max-width: 640px;
+      }
+      header.hero .meta {
+        margin-top: 28px;
+        font-size: 14px;
+        color: var(--text-faint);
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      header.hero .meta .pill {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 12px;
+        background: var(--bg-elev);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 240px;
+        gap: 64px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 40px 32px 120px;
+      }
+      @media (max-width: 900px) {
+        .layout { grid-template-columns: 1fr; }
+        nav.toc { display: none; }
+      }
+
+      main { max-width: 720px; min-width: 0; }
+
+      main h2 {
+        color: var(--accent);
+        font-size: 32px;
+        font-weight: 600;
+        margin: 72px 0 12px;
+        letter-spacing: -0.01em;
+      }
+      main h2:first-child { margin-top: 0; }
+      main h3 {
+        font-size: 22px;
+        margin: 40px 0 8px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      main p { margin: 0 0 18px; }
+      main p code, main li code {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        padding: 1px 7px;
+        border-radius: 6px;
+        font-size: 0.88em;
+        color: #f0e7ff;
+      }
+      main ul { padding-left: 22px; }
+      main li { margin-bottom: 6px; }
+
+      nav.toc {
+        position: sticky;
+        top: 40px;
+        align-self: start;
+        font-size: 14px;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+      nav.toc h4 {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        margin: 0 0 12px;
+      }
+      nav.toc a {
+        display: block;
+        color: var(--text-dim);
+        border: none;
+        padding: 4px 0;
+      }
+      nav.toc a.active { color: var(--accent); }
+      nav.toc a:hover { color: var(--text); }
+
+      /* --- Shiki + code blocks --- */
+      .shiki-wrap {
+        margin: 16px 0 24px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: var(--code-bg);
+        min-width: 0;
+        max-width: 100%;
+      }
+      .shiki-wrap pre.shiki {
+        margin: 0 !important;
+        padding: 16px 18px !important;
+        background: transparent !important;
+        font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+        font-size: 14px;
+        line-height: 1.6;
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .shiki-wrap pre.shiki code { background: transparent !important; }
+      .shiki-wrap.loading {
+        padding: 16px 18px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-dim);
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      /* --- Demo card --- */
+      .demo {
+        margin: 24px 0 32px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        position: relative;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .demo h4 {
+        margin: 0 0 14px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .demo .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .demo .controls label {
+        font-size: 13px;
+        color: var(--text-dim);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .toggle {
+        position: relative;
+        display: inline-flex;
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .toggle button {
+        position: relative;
+        z-index: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-dim);
+        font-family: inherit;
+        font-size: 13px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: color 0.18s;
+      }
+      .toggle button.on { color: #1a1330; font-weight: 600; }
+      .toggle button:hover:not(.on) { color: var(--text); }
+      .toggle .pill {
+        position: absolute;
+        z-index: 0;
+        top: 3px;
+        bottom: 3px;
+        background: var(--accent-strong);
+        border-radius: 6px;
+      }
+
+      .demo input[type="text"], .demo select {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 6px 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        min-width: 140px;
+      }
+      .demo input[type="text"]:focus, .demo select:focus {
+        outline: none; border-color: var(--accent-strong);
+      }
+      .demo button.primary {
+        background: var(--hot);
+        color: #2a1d05;
+        border: none;
+        font-weight: 600;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .demo button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      .demo button.primary:hover:not(:disabled) { filter: brightness(1.05); }
+      .demo button.ghost {
+        background: var(--bg-card-2);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        font-family: inherit;
+        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .demo button.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+
+      .panel-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .panel-grid > * { min-width: 0; }
+      @media (max-width: 640px) { .panel-grid { grid-template-columns: 1fr; } }
+
+      .panel {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 13px;
+        font-family: 'JetBrains Mono', monospace;
+        min-height: 120px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.55;
+      }
+      .panel .label {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.04em;
+        border-radius: 5px;
+        text-transform: uppercase;
+        vertical-align: middle;
+      }
+      .badge.ok   { color: #adfac4; background: rgba(74,222,128,0.14); border: 1px solid rgba(74,222,128,0.4); }
+      .badge.fail { color: #fecaca; background: rgba(248,113,113,0.14); border: 1px solid rgba(248,113,113,0.5); }
+      .badge.mute { color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+
+      .step-line {
+        display: flex;
+        gap: 12px;
+        padding: 9px 0;
+        border-top: 1px dashed var(--border);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        align-items: flex-start;
+      }
+      .step-line:first-child { border-top: none; }
+      .step-line .step-num {
+        min-width: 28px;
+        color: var(--text-faint);
+      }
+      .step-line .step-body { flex: 1; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+      .stack { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+      .layer-row {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+      .layer-tag {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--accent);
+        text-align: right;
+        display: inline-flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 6px;
+      }
+      .layer-box {
+        background: var(--bg-card-2);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent-strong);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 14px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .layer-box.l-tool    { border-left-color: #fbbf24; }
+      .layer-box.l-kit     { border-left-color: #a78bfa; }
+      .layer-box.l-model   { border-left-color: #4ade80; }
+
+      .arrow {
+        text-align: center;
+        color: var(--text-faint);
+        font-size: 13px;
+        margin: -4px 0;
+        font-family: 'JetBrains Mono', monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .hl { color: var(--hot); font-weight: 500; }
+      .hl-purple { color: var(--accent); font-weight: 500; }
+
+      .icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        vertical-align: -2px;
+      }
+
+      footer {
+        max-width: 720px;
+        margin: 60px auto 100px;
+        padding: 32px;
+        color: var(--text-faint);
+        font-size: 14px;
+        text-align: center;
+      }
+
+      /* Mute Shiki's default light text against our dark canvas */
+      .shiki, .shiki span { background-color: transparent !important; }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <h1>An Interactive Guide to Effect AI Tooling</h1>
+      <p class="kicker">
+        Building an agent in <code>@effect/ai</code> looks <em>almost suspiciously</em> simple.
+        Three primitives — <span class="hl-purple">Tool</span>,
+        <span class="hl-purple">Toolkit</span>, <span class="hl-purple">LanguageModel</span> —
+        snap together and your model is suddenly calling functions in your code. The catch is
+        that it took me embarrassingly long to figure out which piece was doing what. This
+        page is the explanation I wish I'd had: poke each demo until it clicks.
+      </p>
+      <div class="meta">
+        <span class="pill">repo: effectclanker</span>
+        <span class="pill">@effect/ai</span>
+        <span class="pill">play with the demos →</span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <main id="main"></main>
+      <nav class="toc" id="toc">
+        <h4>Table of Contents</h4>
+        <a href="#big-picture">The big picture</a>
+        <a href="#layer-tool">Layer 1 — Tool</a>
+        <a href="#layer-toolkit">Layer 2 — Toolkit</a>
+        <a href="#failure-mode">The <code>failureMode</code> trap</a>
+        <a href="#layer-model">Layer 3 — LanguageModel</a>
+        <a href="#turn-loop">Inside one turn</a>
+        <a href="#testing">Testing without an API key</a>
+        <a href="#you-made-it">You made it</a>
+      </nav>
+    </div>
+
+    <footer>
+      Built to explain the three layers of <code>@effect/ai</code> using the
+      effectclanker codebase as the example. Source for every snippet here lives
+      in <code>src/tools/</code>, <code>src/toolkit.ts</code>, and
+      <code>repos/effect/packages/ai/ai/src/</code>.
+    </footer>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react":            "https://esm.sh/react@18.3.1",
+          "react-dom":        "https://esm.sh/react-dom@18.3.1?deps=react@18.3.1",
+          "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1",
+          "react/jsx-runtime":"https://esm.sh/react@18.3.1/jsx-runtime",
+          "framer-motion":    "https://esm.sh/framer-motion@11.11.17?deps=react@18.3.1,react-dom@18.3.1",
+          "lucide-react":     "https://esm.sh/lucide-react@0.460.0?deps=react@18.3.1",
+          "shiki":            "https://esm.sh/shiki@1.24.0"
+        }
+      }
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel" data-type="module" data-presets="react">
+      import React, { useState, useEffect, useMemo, useRef } from "react";
+      import { createRoot } from "react-dom/client";
+      import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+      import {
+        Play, RotateCcw, ChevronLeft, ChevronRight, ArrowDown,
+        CheckCircle2, XCircle, Wrench, Layers, Cpu, Sparkles,
+        FileCode, Terminal, FlaskConical, BookOpenCheck,
+      } from "lucide-react";
+      import { codeToHtml } from "shiki";
+
+      // ---------------------------------------------------------------------
+      // Shiki-backed code block. The hand-rolled tokenizer was the weakest
+      // part of v1 of this page — Shiki uses the real VS Code TextMate grammar
+      // so generics, `yield*`, decorators and string interpolation all colour
+      // correctly. We cache promises by source so re-renders don't re-tokenize.
+      // ---------------------------------------------------------------------
+      const shikiCache = new Map();
+      function highlight(code, lang) {
+        const key = `${lang}::${code}`;
+        if (!shikiCache.has(key)) {
+          shikiCache.set(
+            key,
+            codeToHtml(code, { lang, theme: "github-dark-dimmed" }).catch(
+              () => `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`
+            )
+          );
+        }
+        return shikiCache.get(key);
+      }
+      function escapeHtml(s) {
+        return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      }
+      function CodeBlock({ children, lang = "ts" }) {
+        const src = String(children).replace(/^\n/, "").replace(/\n+$/, "");
+        const [html, setHtml] = useState(null);
+        useEffect(() => {
+          let alive = true;
+          highlight(src, lang).then((h) => { if (alive) setHtml(h); });
+          return () => { alive = false; };
+        }, [src, lang]);
+        return html
+          ? <div className="shiki-wrap" dangerouslySetInnerHTML={{ __html: html }} />
+          : <div className="shiki-wrap loading">{src}</div>;
+      }
+
+      // ---------------------------------------------------------------------
+      // Sliding-pill toggle — uses framer-motion's `layoutId` so the active
+      // background animates from one option to the next instead of cutting.
+      // ---------------------------------------------------------------------
+      function Toggle({ value, options, onChange }) {
+        return (
+          <LayoutGroup id={useMemo(() => `tg-${Math.random().toString(36).slice(2,7)}`, [])}>
+            <div className="toggle">
+              {options.map((opt) => {
+                const active = value === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    className={active ? "on" : ""}
+                    onClick={() => onChange(opt.value)}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="toggle-pill"
+                        className="pill"
+                        style={{ left: 3, right: 3 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </LayoutGroup>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Demo 1 — Tool spec ↔ JSON Schema. Same as before; just renders the
+      // generated TS/JSON through Shiki now for proper highlighting.
+      // ---------------------------------------------------------------------
+      function ToolSpecDemo() {
+        const [name, setName] = useState("read");
+        const [desc, setDesc] = useState(
+          "Read a UTF-8 text file. Optional `offset` and `limit` slice the result."
+        );
+        const [paramName, setParamName] = useState("path");
+        const [paramType, setParamType] = useState("String");
+        const [hasOptional, setHasOptional] = useState(true);
+
+        const spec =
+`Tool.make("${name}", {
+  description: "${desc}",
+  parameters: {
+    ${paramName}: Schema.${paramType},${hasOptional ? `
+    offset: Schema.optional(Schema.Number),
+    limit:  Schema.optional(Schema.Number),` : ""}
+  },
+  success: Schema.String,
+  failure: FileError,
+  failureMode: "return",
+})`;
+
+        const jsonSchema = {
+          name,
+          description: desc,
+          input_schema: {
+            type: "object",
+            properties: {
+              [paramName]: { type: paramType.toLowerCase() },
+              ...(hasOptional
+                ? { offset: { type: "number" }, limit: { type: "number" } }
+                : {}),
+            },
+            required: [paramName],
+          },
+        };
+
+        return (
+          <div className="demo">
+            <h4><FileCode size={14} /> Demo · A Tool is just metadata</h4>
+            <div className="controls">
+              <label>name <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></label>
+              <label>first param <input type="text" value={paramName} onChange={(e) => setParamName(e.target.value)} /></label>
+              <label>type
+                <select value={paramType} onChange={(e) => setParamType(e.target.value)}>
+                  <option>String</option><option>Number</option><option>Boolean</option>
+                </select>
+              </label>
+              <label>
+                <input type="checkbox" checked={hasOptional} onChange={(e) => setHasOptional(e.target.checked)} />
+                add offset/limit
+              </label>
+            </div>
+            <div className="panel-grid">
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>Your Tool.make spec</div>
+                <CodeBlock lang="ts">{spec}</CodeBlock>
+              </div>
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>What the model sees (JSON Schema)</div>
+                <CodeBlock lang="json">{JSON.stringify(jsonSchema, null, 2)}</CodeBlock>
+              </div>
+            </div>
+            <p style={{ marginTop: 14, color: "var(--text-dim)", fontSize: 14 }}>
+              Effect AI derives the JSON Schema on the right from your <code>parameters</code>{" "}
+              <code>Schema</code> automatically — you never call <code>JSONSchema.make</code> yourself.
+            </p>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Demo 2 — Toolkit composition. Renders both halves as highlighted TS.
+      // ---------------------------------------------------------------------
+      function ToolkitDemo() {
+        const ALL = [
+          { name: "read",  handler: "readHandler" },
+          { name: "write", handler: "writeHandler" },
+          { name: "edit",  handler: "editHandler" },
+          { name: "bash",  handler: "bashHandler" },
+          { name: "glob",  handler: "globHandler" },
+          { name: "grep",  handler: "grepHandler" },
+        ];
+        const [enabled, setEnabled] = useState({
+          read: true, write: true, edit: true, bash: false, glob: true, grep: false,
+        });
+        const tools = ALL.filter((t) => enabled[t.name]);
+        const pascal = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+        const left =
+`export const HarnessToolkit = Toolkit.make(
+${tools.map((t, i) => `  ${pascal(t.name)}Tool${i < tools.length - 1 ? "," : ""}`).join("\n")}
+);`;
+        const right =
+`export const HarnessToolkitLayer =
+  HarnessToolkit.toLayer({
+${tools.map((t) => `    ${t.name}: ${t.handler},`).join("\n")}
+  });`;
+
+        return (
+          <div className="demo">
+            <h4><Layers size={14} /> Demo · A Toolkit is a list of tools + a record of handlers</h4>
+            <div className="controls">
+              {ALL.map((t) => (
+                <label key={t.name}>
+                  <input
+                    type="checkbox"
+                    checked={enabled[t.name]}
+                    onChange={(e) => setEnabled({ ...enabled, [t.name]: e.target.checked })}
+                  />
+                  {t.name}
+                </label>
+              ))}
+            </div>
+            <div className="panel-grid">
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>src/toolkit.ts</div>
+                <CodeBlock lang="ts">{left}</CodeBlock>
+              </div>
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>.toLayer — the handler record</div>
+                <CodeBlock lang="ts">{right}</CodeBlock>
+              </div>
+            </div>
+            <p style={{ marginTop: 14, color: "var(--text-dim)", fontSize: 14 }}>
+              The <code>.toLayer</code> record's type is <em>derived</em> from the tools
+              you put in <code>Toolkit.make</code>. Forget a handler, or rename a tool —
+              TypeScript stops compiling.
+            </p>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Demo 3 — failureMode timeline. Now animates with framer-motion: each
+      // step springs in with a slight upward drift, and lucide icons mark
+      // success vs death at step 5.
+      // ---------------------------------------------------------------------
+      function FailureModeDemo() {
+        const [mode, setMode] = useState("return");
+        const [step, setStep] = useState(0);
+        const [running, setRunning] = useState(false);
+
+        const run = () => {
+          setRunning(true);
+          setStep(0);
+          let i = 0;
+          const tick = () => {
+            i++;
+            setStep(i);
+            if (i < 5) setTimeout(tick, 550);
+            else setRunning(false);
+          };
+          setTimeout(tick, 400);
+        };
+        const reset = () => { setStep(0); setRunning(false); };
+
+        const lines =
+          mode === "return"
+            ? [
+                { num: "1.", body: <>model emits <code>tool_use</code> → <code>read("/no/such/file")</code></> },
+                { num: "2.", body: <>handler runs, fails with <code>FileNotFound</code></> },
+                { num: "3.", body: <>framework catches the failure (because <code>"return"</code>)</> },
+                { num: "4.", body: <>encodes <code>{`{ isFailure: true, result: FileNotFound }`}</code> into the response</> },
+                { num: "5.", body: <><span className="badge ok"><CheckCircle2 size={12} /> turn survives</span> — model can recover on the next turn</> },
+              ]
+            : [
+                { num: "1.", body: <>model emits <code>tool_use</code> → <code>read("/no/such/file")</code></> },
+                { num: "2.", body: <>handler runs, fails with <code>FileNotFound</code></> },
+                { num: "3.", body: <>framework <em>doesn't</em> catch it (default <code>"error"</code>)</> },
+                { num: "4.", body: <>failure escapes through <code>generateText</code></> },
+                { num: "5.", body: <><span className="badge fail"><XCircle size={12} /> turn dies</span> — entire Effect rejects</> },
+              ];
+
+        return (
+          <div className="demo">
+            <h4><FlaskConical size={14} /> Demo · failureMode is the one knob you must turn</h4>
+            <div className="controls">
+              <Toggle
+                value={mode}
+                onChange={(v) => { setMode(v); reset(); }}
+                options={[
+                  { value: "return", label: 'failureMode: "return"' },
+                  { value: "error",  label: 'failureMode: "error" (default)' },
+                ]}
+              />
+              <button className="primary" onClick={run} disabled={running}>
+                <Play size={14} /> Run the failing tool call
+              </button>
+              <button className="ghost" onClick={reset}>
+                <RotateCcw size={13} /> reset
+              </button>
+            </div>
+            <div className="panel">
+              <div className="label">timeline of one tool call that fails</div>
+              {lines.map((l, idx) => (
+                <motion.div
+                  key={mode + "-" + idx}
+                  className="step-line"
+                  initial={false}
+                  animate={{
+                    opacity: step > idx ? 1 : 0.18,
+                    y: step > idx ? 0 : 4,
+                  }}
+                  transition={{ type: "spring", stiffness: 280, damping: 28 }}
+                >
+                  <div className="step-num">{l.num}</div>
+                  <div className="step-body">{l.body}</div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Demo 4 — Turn loop. Each row springs in via framer-motion when
+      // reached. Step indicator at top right shows progress. Lucide icons
+      // tag each layer (your code / Anthropic / Toolkit / handler).
+      // ---------------------------------------------------------------------
+      function TurnLoopDemo() {
+        const [step, setStep] = useState(0);
+        const [auto, setAuto] = useState(false);
+        const max = 6;
+
+        useEffect(() => {
+          if (!auto) return;
+          if (step >= max) { setAuto(false); return; }
+          const id = setTimeout(() => setStep((s) => Math.min(s + 1, max)), 900);
+          return () => clearTimeout(id);
+        }, [auto, step]);
+
+        const rowAnim = (i) => ({
+          opacity: step >= i ? 1 : 0.18,
+          x: step >= i ? 0 : -6,
+        });
+        const boxAnim = (i) => ({
+          ...rowAnim(i),
+          boxShadow: step === i ? "0 0 0 1px rgba(251,191,36,0.55), 0 6px 24px -8px rgba(251,191,36,0.35)" : "0 0 0 0px transparent",
+        });
+        const sp = { type: "spring", stiffness: 320, damping: 28 };
+
+        return (
+          <div className="demo">
+            <h4><Cpu size={14} /> Demo · One generateText call, step by step</h4>
+            <div className="controls">
+              <button className="primary" onClick={() => { setStep(0); setAuto(true); }}>
+                <Play size={14} /> Play
+              </button>
+              <button className="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))}>
+                <ChevronLeft size={13} /> back
+              </button>
+              <button className="ghost" onClick={() => setStep((s) => Math.min(max, s + 1))}>
+                next <ChevronRight size={13} />
+              </button>
+              <button className="ghost" onClick={() => { setStep(0); setAuto(false); }}>
+                <RotateCcw size={13} /> reset
+              </button>
+              <span style={{ marginLeft: "auto", color: "var(--text-faint)", fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>
+                step {step} / {max}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <motion.div className="layer-row" animate={rowAnim(1)} transition={sp}>
+                <div className="layer-tag"><Sparkles size={13} /> your code</div>
+                <motion.div className="layer-box l-tool" animate={boxAnim(1)} transition={sp}>
+                  <code>yield* LanguageModel.generateText({"{ prompt, toolkit: HarnessToolkit }"})</code>
+                </motion.div>
+              </motion.div>
+
+              <motion.div className="arrow" animate={rowAnim(2)} transition={sp}>
+                <ArrowDown size={14} /> HTTP request
+              </motion.div>
+              <motion.div className="layer-row" animate={rowAnim(2)} transition={sp}>
+                <div className="layer-tag"><Cpu size={13} /> Anthropic API</div>
+                <motion.div className="layer-box l-model" animate={boxAnim(2)} transition={sp}>
+                  responds with{" "}
+                  <span className="badge mute">text</span>{" "}
+                  <span className="badge mute">tool_use: read("/etc/hostname")</span>
+                </motion.div>
+              </motion.div>
+
+              <motion.div className="arrow" animate={rowAnim(3)} transition={sp}>
+                <ArrowDown size={14} /> resolveToolCalls (parallel forEach)
+              </motion.div>
+              <motion.div className="layer-row" animate={rowAnim(3)} transition={sp}>
+                <div className="layer-tag"><Layers size={13} /> Toolkit.handle</div>
+                <motion.div className="layer-box l-kit" animate={boxAnim(3)} transition={sp}>
+                  decodes <code>params</code> via the tool's <code>Schema</code>, looks up
+                  {" "}<code>readHandler</code> by name
+                </motion.div>
+              </motion.div>
+
+              <motion.div className="arrow" animate={rowAnim(4)} transition={sp}>
+                <ArrowDown size={14} /> invokes handler
+              </motion.div>
+              <motion.div className="layer-row" animate={rowAnim(4)} transition={sp}>
+                <div className="layer-tag"><Wrench size={13} /> your handler</div>
+                <motion.div className="layer-box l-tool" animate={boxAnim(4)} transition={sp}>
+                  <code>readHandler({"{ path: \"/etc/hostname\" }"})</code> reads the file,
+                  returns <code>"my-laptop\n"</code>
+                </motion.div>
+              </motion.div>
+
+              <motion.div className="arrow" animate={rowAnim(5)} transition={sp}>
+                <ArrowDown size={14} /> encoded back into the response
+              </motion.div>
+              <motion.div className="layer-row" animate={rowAnim(5)} transition={sp}>
+                <div className="layer-tag"><Layers size={13} /> framework</div>
+                <motion.div className="layer-box l-kit" animate={boxAnim(5)} transition={sp}>
+                  adds <span className="badge mute">tool_result</span> to the response parts
+                </motion.div>
+              </motion.div>
+
+              <motion.div className="arrow" animate={rowAnim(6)} transition={sp}>
+                <ArrowDown size={14} />
+              </motion.div>
+              <motion.div className="layer-row" animate={rowAnim(6)} transition={sp}>
+                <div className="layer-tag"><Sparkles size={13} /> your code</div>
+                <motion.div className="layer-box l-model" animate={boxAnim(6)} transition={sp}>
+                  <span className="badge ok"><CheckCircle2 size={12} /> returned</span>{" "}
+                  <code>{"GenerateTextResponse { text, toolCalls, toolResults, finishReason }"}</code>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            <p style={{ marginTop: 18, color: "var(--text-dim)", fontSize: 14 }}>
+              Notice what didn't happen: the model was <strong>not</strong> called again with the tool
+              result. <code>generateText</code> is a single round-trip plus intra-call tool dispatch —
+              it isn't the agent loop.
+            </p>
+          </div>
+        );
+      }
+
+      // ---------------------------------------------------------------------
+      // Demo 5 — Mock LanguageModel. Highlights both halves with Shiki.
+      // ---------------------------------------------------------------------
+      function MockModelDemo() {
+        const [partKind, setPartKind] = useState("tool-call");
+        const [text, setText] = useState("hello back");
+        const [toolName, setToolName] = useState("glob");
+        const [pattern, setPattern] = useState("**/*.ts");
+
+        const script =
+          partKind === "text"
+            ? `[ mockText("${text}") ]`
+            : `[ mockToolCall("${toolName}", { pattern: "${pattern}" }) ]`;
+
+        const fakeResponse =
+          partKind === "text"
+            ? { text, toolCalls: [], toolResults: [], finishReason: "stop" }
+            : {
+                text: "",
+                toolCalls:   [{ name: toolName, params: { pattern } }],
+                toolResults: [{ name: toolName, isFailure: false, result: ["a.ts", "b.ts", "sub/c.ts"] }],
+                finishReason: "tool_calls",
+              };
+
+        const testSrc =
+`yield* runToolkit({
+  prompt: "list ts files",
+  parts:  ${script},
+});`;
+
+        return (
+          <div className="demo">
+            <h4><Terminal size={14} /> Demo · Scripting the model with mockText / mockToolCall</h4>
+            <div className="controls">
+              <Toggle
+                value={partKind}
+                onChange={setPartKind}
+                options={[
+                  { value: "text",      label: "mockText" },
+                  { value: "tool-call", label: "mockToolCall" },
+                ]}
+              />
+              {partKind === "text" ? (
+                <label>text <input type="text" value={text} onChange={(e) => setText(e.target.value)} /></label>
+              ) : (
+                <>
+                  <label>name
+                    <select value={toolName} onChange={(e) => setToolName(e.target.value)}>
+                      <option>glob</option><option>read</option><option>edit</option><option>bash</option>
+                    </select>
+                  </label>
+                  <label>pattern <input type="text" value={pattern} onChange={(e) => setPattern(e.target.value)} /></label>
+                </>
+              )}
+            </div>
+            <div className="panel-grid">
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>test/toolkit.test.ts</div>
+                <CodeBlock lang="ts">{testSrc}</CodeBlock>
+              </div>
+              <div>
+                <div className="label" style={{ marginBottom: 6, fontFamily: "Inter", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-faint)" }}>GenerateTextResponse you get back</div>
+                <CodeBlock lang="json">{JSON.stringify(fakeResponse, null, 2)}</CodeBlock>
+              </div>
+            </div>
+            <p style={{ marginTop: 14, color: "var(--text-dim)", fontSize: 14 }}>
+              The model is mocked. The <em>handlers are not</em> — <code>runToolkit</code> provides
+              the real <code>HarnessToolkitLayer</code>, so the call's <code>params</code> are
+              decoded by the same <code>Schema</code> the production code uses, and the real
+              <code> globHandler</code> runs against the real filesystem.
+            </p>
+          </div>
+        );
+      }
+
+      // ============================== PAGE BODY ==============================
+
+      function Guide() {
+        useEffect(() => {
+          const headings = Array.from(document.querySelectorAll("main h2[id]"));
+          const tocLinks = Array.from(document.querySelectorAll("nav.toc a"));
+          const obs = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((e) => {
+                if (e.isIntersecting) {
+                  tocLinks.forEach((l) => l.classList.remove("active"));
+                  const id = e.target.getAttribute("id");
+                  const link = tocLinks.find((l) => l.getAttribute("href") === `#${id}`);
+                  if (link) link.classList.add("active");
+                }
+              });
+            },
+            { rootMargin: "-30% 0px -60% 0px" }
+          );
+          headings.forEach((h) => obs.observe(h));
+          return () => obs.disconnect();
+        }, []);
+
+        return (
+          <>
+            <h2 id="big-picture">The big picture</h2>
+            <p>
+              Here's the strange thing about an Effect-AI agent: it's <em>almost entirely</em>{" "}
+              three primitives, stacked. Once you see that — really see it — the rest of the
+              library stops feeling like magic.
+            </p>
+            <p>From the bottom up:</p>
+            <div className="stack">
+              <div className="layer-row">
+                <div className="layer-tag"><Wrench size={13} /> Tool</div>
+                <div className="layer-box l-tool">a typed spec for one capability</div>
+              </div>
+              <div className="arrow"><ArrowDown size={14} style={{ transform: "rotate(180deg)" }} /> composed by</div>
+              <div className="layer-row">
+                <div className="layer-tag"><Layers size={13} /> Toolkit</div>
+                <div className="layer-box l-kit">a record of tools + their handlers</div>
+              </div>
+              <div className="arrow"><ArrowDown size={14} style={{ transform: "rotate(180deg)" }} /> consumed by</div>
+              <div className="layer-row">
+                <div className="layer-tag"><Cpu size={13} /> LanguageModel</div>
+                <div className="layer-box l-model">drives one model call + tool dispatch</div>
+              </div>
+            </div>
+            <p>
+              <strong>That's it. That's the whole conceptual model.</strong> Everything else —
+              the JSON Schema generation, the parallel tool dispatch, the failure encoding —
+              is the library doing its job so you don't have to. You write the three pieces;
+              <code> @effect/ai</code> does the wiring.
+            </p>
+            <p>
+              In this repo, each layer has a home: <code>Tool</code> instances live in{" "}
+              <code>src/tools/*.ts</code>, the <code>Toolkit</code> lives in{" "}
+              <code>src/toolkit.ts</code>, and the <code>LanguageModel</code> gets provided
+              in <code>src/cli.ts</code>. We'll walk all three.
+            </p>
+
+            <h2 id="layer-tool">Layer 1 — Tool</h2>
+            <p>
+              A <code>Tool</code> is <span className="hl">just metadata</span>. <em>Really.</em>{" "}
+              I know that sounds like a deflection, but stick with me — this was the thing that
+              took me longest to internalize, and it's the entire reason <code>@effect/ai</code>{" "}
+              is so pleasant to use.
+            </p>
+            <p>
+              When you write <code>Tool.make(...)</code>, you're not writing a function. You're
+              writing a <em>description</em> of one: a name, some text the model will read to
+              decide when to call it, and three schemas covering the inputs, the success type,
+              and the failure type. That's the whole spec. There's no <code>execute</code>{" "}
+              field. There's nowhere to put the implementation.
+            </p>
+            <CodeBlock lang="ts">{
+`import { Tool } from "@effect/ai";
+import { Effect, Schema } from "effect";
+
+export const ReadTool = Tool.make("read", {
+  description: "Read a UTF-8 text file. Optional offset and limit slice the result.",
+  parameters: {
+    path: Schema.String,
+    offset: Schema.optional(Schema.Number),
+    limit:  Schema.optional(Schema.Number),
+  },
+  success: Schema.String,
+  failure: FileError,
+  failureMode: "return",
+});`
+}</CodeBlock>
+            <p>
+              The first time I saw this, I assumed I was missing something. Surely <em>somewhere</em>{" "}
+              I have to wire the spec to the actual code? You do — but that wiring lives one layer up,
+              in <code>Toolkit.make</code>. The reason for the split is testability: a{" "}
+              <code>handler</code> you can import and call directly is a <code>handler</code>{" "}
+              you can write a fast little unit test for, without ever spinning up an LLM.
+            </p>
+            <p>
+              Play with the demo below. The interesting thing is the right-hand panel: as
+              you edit the spec, the JSON Schema the model actually sees updates with it.
+              That translation is automatic — you never call <code>JSONSchema.make</code> yourself.
+            </p>
+
+            <ToolSpecDemo />
+
+            <h2 id="layer-toolkit">Layer 2 — Toolkit</h2>
+            <p>
+              OK, so we've got specs. Specs don't <em>do</em> anything. Time to give them
+              implementations.
+            </p>
+            <p>
+              That's what <code>Toolkit</code> is for, and it does the job in two halves:
+              <code> Toolkit.make(...specs)</code> declares which tools exist, and{" "}
+              <code>.toLayer({"{ ... handlers }"})</code> attaches the matching implementations.
+              Toggle a tool on or off in the demo and watch both halves update in lockstep:
+            </p>
+
+            <ToolkitDemo />
+
+            <p>
+              Here's the part that delighted me:{" "}
+              <strong>the handler record's type is derived from the <code>Toolkit.make</code> call.</strong>{" "}
+              If you rename a tool, or forget a handler, or pass the wrong shape — TypeScript
+              stops compiling. There's no possible state where the spec and the handler
+              disagree. The check is baked into the type system, and you get it for free.
+            </p>
+            <p>
+              When the model later invokes <code>"read"</code>, the framework looks up the
+              spec by name, decodes the call's <code>params</code> with that spec's{" "}
+              <code>Schema</code>, and dispatches to <code>readHandler</code> — the function
+              you supplied. None of that wiring is something you write by hand.
+            </p>
+
+            <h2 id="failure-mode">The <code>failureMode</code> trap</h2>
+            <p>
+              OK. Real talk. This one bit me, and I want to spare you the same hour I lost.
+            </p>
+            <p>
+              <code>Tool.make</code> has a field called <code>failureMode</code>. It defaults
+              to <code>"error"</code>. And that default — for almost every tool you'll ever
+              write — is <em>wrong</em>.
+            </p>
+            <p>
+              Here's why it matters. When the model calls one of your tools and the handler
+              fails (the file doesn't exist, the bash command exited 1, whatever), one of two
+              things can happen:
+            </p>
+            <ul>
+              <li>
+                In <code>"error"</code> mode, the failure escapes the framework like a thrown
+                exception. Your <code>generateText</code> call rejects. The whole turn{" "}
+                <em>dies</em>, and the model never even hears about the failure.
+              </li>
+              <li>
+                In <code>"return"</code> mode, the framework <span className="hl">catches</span>{" "}
+                the failure and tucks it into the response as a <code>tool_result</code> with{" "}
+                <code>isFailure: true</code>. The turn survives. The next call can hand the
+                failure back to the model and let it try something else.
+              </li>
+            </ul>
+            <p>
+              Notice which one of those feels like an <em>agent</em> and which one feels
+              like a 500. Run the demo and watch:
+            </p>
+
+            <FailureModeDemo />
+
+            <p>
+              This is one of those rare cases where the framework's default is set up for
+              the simpler case (a tool that genuinely <em>can't</em> fail) and quietly
+              catastrophic for everything else. Set <code>failureMode: "return"</code> whenever
+              you declare a non-<code>Never</code> failure schema. The two go together — the
+              one without the other is almost always a bug.
+            </p>
+            <p>
+              If you're curious, the exact branch that does this lives in{" "}
+              <code>repos/effect/packages/ai/ai/src/Toolkit.ts</code> around line 325:
+            </p>
+            <CodeBlock lang="ts">{
+`Effect.catchAll((error) =>
+  tool.failureMode === "error"
+    ? Effect.fail(error)
+    : Effect.succeed({ result: error, isFailure: true })
+)`
+}</CodeBlock>
+
+            <h2 id="layer-model">Layer 3 — LanguageModel</h2>
+            <p>
+              So far we've built a list of capabilities. We haven't actually <em>called the
+              model</em>. That's what <code>LanguageModel</code> is for.
+            </p>
+            <p>
+              <code>LanguageModel</code> is a <code>Context.Tag</code> — a placeholder, in
+              Effect-speak — and you fill it in by providing a provider-specific layer. In
+              this codebase, that's <code>AnthropicLanguageModel.layer({"{ model }"})</code>{" "}
+              stacked on <code>AnthropicClient.layerConfig({"{ apiKey }"})</code>. Once you've
+              done that, calling the model is a regular Effect:
+            </p>
+            <CodeBlock lang="ts">{
+`const response = yield* LanguageModel.generateText({
+  prompt: "list ts files in the current directory",
+  toolkit: HarnessToolkit,
+});
+
+// response.text         — final assistant text
+// response.toolCalls    — the tool_use parts the model emitted
+// response.toolResults  — what your handlers returned (including failures)
+// response.finishReason — "stop" | "tool_calls" | …`
+}</CodeBlock>
+            <p>
+              One detail to brace yourself for: a single <code>generateText</code> call is{" "}
+              <span className="hl">not</span> the whole agent loop. It's one round-trip with
+              the provider plus whatever tool dispatch happens inside that one response. If
+              you want the model to react to a tool result, you have to call{" "}
+              <code>generateText</code> again. The next section walks through exactly what
+              one call does — and, importantly, what it doesn't.
+            </p>
+
+            <h2 id="turn-loop">Inside one turn</h2>
+            <p>
+              Let's slow down and watch what actually happens between the moment you write{" "}
+              <code>yield* generateText(...)</code> and the moment the Effect resolves. The
+              animation steps through it in six beats — hit play, or step manually:
+            </p>
+
+            <TurnLoopDemo />
+
+            <p>
+              Take a second to notice what <em>didn't</em> happen there. The model was never
+              called a second time. It produced one response, the framework dispatched the
+              tool call, encoded the result back into the same response, and returned. That
+              is the loop. Or rather — that's the <em>absence</em> of the loop.
+            </p>
+            <p>
+              The "agent loop" people talk about is just <em>you</em>, calling{" "}
+              <code>generateText</code> repeatedly with the updated history.{" "}
+              <code>Chat.send</code> is the higher-level helper that keeps the history in a{" "}
+              <code>Ref</code> for you, but even it doesn't loop on its own. The "is there a
+              follow-up?" decision is always yours.
+            </p>
+
+            <h2 id="testing">Testing without an API key</h2>
+            <p>
+              You really, <em>really</em> don't want to hit the real Anthropic API in your
+              tests. It's slow, it's flaky, it costs money, and the model is nondeterministic —
+              that's <em>four</em> reasons in one sentence. So we don't.
+            </p>
+            <p>
+              Instead, you swap in a fake <code>LanguageModel</code> that returns whatever
+              response parts you script, and let the real toolkit run against it:
+            </p>
+            <CodeBlock lang="ts">{
+`it.effect("dispatches a glob tool call to its handler", () =>
+  withTmpDir("glob-dispatch", (dir) =>
+    Effect.gen(function* () {
+      yield* writeFiles(dir, { "a.ts": "", "b.ts": "" });
+      const response = yield* runToolkit({
+        prompt: "list ts files",
+        parts:  [mockToolCall("glob", { pattern: "**/*.ts", cwd: dir })],
+      });
+      expect(response.toolCalls).toHaveLength(1);
+      expect(response.toolResults[0].result).toEqual(["a.ts", "b.ts"]);
+    }),
+  ),
+);`
+}</CodeBlock>
+
+            <MockModelDemo />
+
+            <p>
+              Honestly, this is one of my favourite parts of the whole library. The model
+              gets mocked. The <em>handlers don't</em>. Your tool calls flow through the same{" "}
+              <code>Schema</code> decoding, the same name-routing, the same{" "}
+              <code>failureMode</code> branch as production. You get end-to-end confidence at
+              unit-test speed — and you never need an API key in CI.
+            </p>
+            <p>
+              The script can also be a function instead of an array, which is handy for
+              multi-turn tests where call #1 emits a tool call and call #2 emits final text:
+            </p>
+            <CodeBlock lang="ts">{
+`let call = 0;
+const parts = () => {
+  call++;
+  return call === 1
+    ? [mockToolCall("read", { path: "/no/such/file" })]
+    : [mockText("I tried, that path is missing.")];
+};
+const turn1 = yield* runToolkit({ prompt: "read the file", parts });
+const turn2 = yield* runToolkit({ prompt: "what happened?", parts });
+expect(turn2.text).toBe("I tried, that path is missing.");`
+}</CodeBlock>
+
+            <h3>What the tiers test</h3>
+            <ul>
+              <li>
+                <strong>handler-direct</strong> (<code>test/tools/*.test.ts</code>) — call
+                the exported <code>handler</code> with concrete params. Fast, focused, no
+                model involved.
+              </li>
+              <li>
+                <strong>toolkit-via-mock</strong> (<code>test/toolkit.test.ts</code>) —
+                drive <code>generateText</code> with the mock model and the real toolkit.
+                Catches spec ↔ handler ↔ toolkit wiring bugs (JSON Schema decode,{" "}
+                <code>failureMode</code>, name-routing).
+              </li>
+            </ul>
+
+            <h2 id="you-made-it"><BookOpenCheck size={26} style={{ verticalAlign: "-4px", marginRight: 8 }} />You made it</h2>
+            <p>
+              That's it. <em>Really.</em> Three layers — <code>Tool</code>, <code>Toolkit</code>,{" "}
+              <code>LanguageModel</code> — and once you've internalized that split, every file
+              in <code>src/</code> is just an instance of one of them. The library has no
+              hidden cleverness past this point. Just composition.
+            </p>
+            <p>If you want to keep going:</p>
+            <ul>
+              <li><a href="./guides/adding-a-tool.md">Add a tool</a> — the recipe for the most common task in this codebase.</li>
+              <li><a href="./patterns/effect-ai-gotchas.md">The gotchas</a> — three non-obvious things that bit us.</li>
+              <li><a href="./guides/testing.md">Testing with Effect</a> — the mechanics behind <code>runToolkit</code>, <code>mockText</code>, <code>mockToolCall</code>.</li>
+            </ul>
+          </>
+        );
+      }
+
+      createRoot(document.getElementById("main")).render(<Guide />);
+    </script>
+  </body>
+</html>
