@@ -61,6 +61,7 @@ Source-of-truth code for libraries we depend on and patterns we model after. Tre
 - `repos/effect/` — https://github.com/Effect-TS/effect @ main (squashed)
 - `repos/codex/` — https://github.com/openai/codex.git @ main (squashed)
 - `repos/pi/` — https://github.com/earendil-works/pi.git @ main (squashed)
+- `repos/opencode/` — https://github.com/anomalyco/opencode.git @ dev (squashed)
 
 oxlint and oxfmt carry explicit `repos/**` ignore patterns — vendored source is not subject to our style rules.
 
