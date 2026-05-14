@@ -63,7 +63,7 @@ export type GrepError = typeof GrepError.Type;
 export const GlobError = Schema.Union(FileNotFound, FileAccessDenied, IsADirectory, FileIOError);
 export type GlobError = typeof GlobError.Type;
 
-export class BashSpawnFailed extends Schema.TaggedError<BashSpawnFailed>()("BashSpawnFailed", {
+export class ShellSpawnFailed extends Schema.TaggedError<ShellSpawnFailed>()("ShellSpawnFailed", {
   command: Schema.String,
   message: Schema.String,
 }) {}
@@ -73,8 +73,8 @@ export class ApprovalDenied extends Schema.TaggedError<ApprovalDenied>()("Approv
   reason: Schema.String,
 }) {}
 
-export const BashError = Schema.Union(BashSpawnFailed, ApprovalDenied);
-export type BashError = typeof BashError.Type;
+export const ShellError = Schema.Union(ShellSpawnFailed, ApprovalDenied);
+export type ShellError = typeof ShellError.Type;
 
 export class ApplyPatchParseError extends Schema.TaggedError<ApplyPatchParseError>()(
   "ApplyPatchParseError",

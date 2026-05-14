@@ -53,7 +53,7 @@ fields:
 
 | Field         | What it is                                                                                           |
 | ------------- | ---------------------------------------------------------------------------------------------------- |
-| `name`        | The identifier the model uses (`"read"`, `"bash"`, …)                                                |
+| `name`        | The identifier the model uses (`"read"`, `"shell"`, …)                                               |
 | `description` | Free-text shown to the model. Shapes when it picks the tool.                                         |
 | `parameters`  | A `Schema.Struct.Fields` record — the input shape.                                                   |
 | `success`     | `Schema.Schema` for a successful result.                                                             |
@@ -80,7 +80,7 @@ export const HarnessToolkit = Toolkit.make(
   ReadTool,
   WriteTool,
   EditTool,
-  BashTool,
+  ShellTool,
   GrepTool,
   GlobTool,
 );

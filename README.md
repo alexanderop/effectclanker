@@ -6,7 +6,7 @@ and [`@effect/ai`](https://effect.website/docs/ai/introduction).
 The project exists to learn Effect by reading the OpenAI Codex source and
 reproducing its patterns in TypeScript. It is not a polished product.
 
-The harness wires a small set of tools (`read`, `write`, `edit`, `bash`,
+The harness wires a small set of tools (`read`, `write`, `edit`, `shell`,
 `grep`, `glob`, `apply-patch`, `update-plan`) into an Anthropic-backed
 `LanguageModel`. You give it a prompt; it calls tools until it has an answer.
 
@@ -32,7 +32,7 @@ bun packages/cli/src/cli.ts run "list the TypeScript files in packages/"
 # Pick a model
 bun packages/cli/src/cli.ts run --model claude-sonnet-4-6 "..."
 
-# Gate the bash tool behind an approval policy
+# Gate the shell tool behind an approval policy
 bun packages/cli/src/cli.ts run --approval interactive "..."   # prompt y/N per call
 bun packages/cli/src/cli.ts run --approval deny "..."          # reject every gated call
 bun packages/cli/src/cli.ts run --approval auto "..."          # default

@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint",
+    "lint": "oxlint packages",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "check": "bun run typecheck && bun run lint && bun run format:check && bun run test"

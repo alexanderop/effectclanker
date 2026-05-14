@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { LanguageModel } from "@effect/ai";
+import { Chat } from "@effect/ai";
 import { AnthropicClient, AnthropicLanguageModel } from "@effect/ai-anthropic";
 import { Args, Command, Options } from "@effect/cli";
 import { FetchHttpClient } from "@effect/platform";
@@ -12,8 +12,10 @@ import {
 } from "@effectclanker/tools";
 import {
   ApprovalInteractiveLayer,
-  HarnessToolkit,
   HarnessToolkitLayerBare,
+  runAgentTurn,
+  stepCountIs,
+  type TurnEvent,
 } from "@effectclanker/harness";
 // Layer is still used for AnthropicClient's HttpClient wiring below.
 import {
@@ -22,7 +24,7 @@ import {
   ApprovalInkLayer,
   runChatApp,
 } from "@effectclanker/tui";
-import { Config, Console, Effect, Layer } from "effect";
+import { Config, Console, Effect, Layer, Stream } from "effect";
 
 const promptArg = Args.text({ name: "prompt" }).pipe(
   Args.withDescription("The prompt to send to the model"),
@@ -61,29 +63,68 @@ const renderToolResult = (result: unknown): string => {
   return JSON.stringify(result);
 };
 
+interface RunAccumulator {
+  text: string;
+  toolCalls: Array<Extract<TurnEvent, { kind: "tool-call" }>>;
+  toolResults: Array<Extract<TurnEvent, { kind: "tool-result" }>>;
+  finishReason: string;
+  errors: Array<string>;
+}
+
 const runCommand = Command.make(
   "run",
   { model: modelOption, prompt: promptArg, approval: approvalOption },
   ({ approval, model, prompt }) =>
     Effect.gen(function* () {
-      const response = yield* LanguageModel.generateText({
-        prompt,
-        toolkit: HarnessToolkit,
-      });
+      const chat = yield* Chat.empty;
+      const acc: RunAccumulator = {
+        text: "",
+        toolCalls: [],
+        toolResults: [],
+        finishReason: "unknown",
+        errors: [],
+      };
 
-      yield* Console.log("---");
-      if (response.text.trim().length > 0) {
-        yield* Console.log(`text: ${response.text}`);
+      // Stream the agent loop live: print each tool-call, tool-result, and
+      // text-delta as it arrives, while accumulating state for the final
+      // summary block below.
+      yield* runAgentTurn({ chat, prompt, stopWhen: stepCountIs(25) }).pipe(
+        Stream.runForEach((event) => {
+          switch (event.kind) {
+            case "text-delta":
+              acc.text += event.delta;
+              return Effect.sync(() => process.stdout.write(event.delta));
+            case "tool-call":
+              acc.toolCalls.push(event);
+              return Console.log(`\n→ ${event.name}(${JSON.stringify(event.params)})`);
+            case "tool-result":
+              acc.toolResults.push(event);
+              return Console.log(
+                `← [${event.isFailure ? "FAIL" : "ok"}] ${event.name}: ${renderToolResult(event.result)}`,
+              );
+            case "finish":
+              acc.finishReason = event.reason;
+              return Effect.void;
+            case "error":
+              acc.errors.push(event.message);
+              return Console.log(`\n! error: ${event.message}`);
+          }
+        }),
+      );
+
+      yield* Console.log("\n---");
+      if (acc.text.trim().length > 0) {
+        yield* Console.log(`text: ${acc.text}`);
       }
-      if (response.toolCalls.length > 0) {
-        yield* Console.log(`tool calls (${response.toolCalls.length}):`);
-        yield* Effect.forEach(response.toolCalls, (call) =>
+      if (acc.toolCalls.length > 0) {
+        yield* Console.log(`tool calls (${acc.toolCalls.length}):`);
+        yield* Effect.forEach(acc.toolCalls, (call) =>
           Console.log(`  - ${call.name}(${JSON.stringify(call.params)})`),
         );
       }
-      if (response.toolResults.length > 0) {
-        yield* Console.log(`tool results (${response.toolResults.length}):`);
-        yield* Effect.forEach(response.toolResults, (tr) => {
+      if (acc.toolResults.length > 0) {
+        yield* Console.log(`tool results (${acc.toolResults.length}):`);
+        yield* Effect.forEach(acc.toolResults, (tr) => {
           const marker = tr.isFailure ? "FAIL" : "ok";
           return Console.log(`  - [${marker}] ${tr.name}: ${renderToolResult(tr.result)}`);
         });
@@ -101,7 +142,7 @@ const runCommand = Command.make(
         });
       }
 
-      yield* Console.log(`finish: ${response.finishReason}`);
+      yield* Console.log(`finish: ${acc.finishReason}`);
     }).pipe(
       // Layers are stacked outermost-last so each call satisfies the layer
       // above it. AnthropicClient is scoped inside the handler so `--help`

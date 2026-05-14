@@ -3,9 +3,9 @@ import { Command } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
 import { Duration, Effect, Fiber, Schema, Stream } from "effect";
 import { ApprovalPolicy } from "./approval-policy.ts";
-import { BashError, BashSpawnFailed } from "./errors.ts";
+import { ShellError, ShellSpawnFailed } from "./errors.ts";
 
-export const BashResultSchema = Schema.Struct({
+export const ShellResultSchema = Schema.Struct({
   stdout: Schema.String,
   stderr: Schema.String,
   exitCode: Schema.Number,
@@ -13,9 +13,14 @@ export const BashResultSchema = Schema.Struct({
   truncated: Schema.Boolean,
 });
 
-export type BashResult = typeof BashResultSchema.Type;
+export type ShellResult = typeof ShellResultSchema.Type;
 
-export const BashTool = Tool.make("bash", {
+// Tool name is `shell` (not `bash`) to avoid collision with Anthropic's
+// provider-defined `bash` tool — `@effect/ai-anthropic` rewrites incoming
+// `tool_use.name = "bash"` to `"AnthropicBash"` before the toolkit decodes
+// the response, which would crash the stream against our toolkit's name
+// union. See docs/patterns/effect-ai-gotchas.md §4.
+export const ShellTool = Tool.make("shell", {
   description:
     "Run a shell command via `sh -c`. Captures stdout, stderr, exit code. Default timeout 10s, output capped at 256 KiB. Env is scrubbed to PATH/HOME/USER/LANG/LC_ALL/TERM.",
   parameters: {
@@ -23,12 +28,12 @@ export const BashTool = Tool.make("bash", {
     cwd: Schema.optional(Schema.String),
     timeoutMs: Schema.optional(Schema.Number),
   },
-  success: BashResultSchema,
-  failure: BashError,
+  success: ShellResultSchema,
+  failure: ShellError,
   failureMode: "return",
 });
 
-export interface BashParams {
+export interface ShellParams {
   readonly command: string;
   readonly cwd?: string | undefined;
   readonly timeoutMs?: number | undefined;
@@ -76,14 +81,14 @@ const captureStream = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.Effect<C
 
 type RaceResult = { readonly kind: "exit"; readonly code: number } | { readonly kind: "timeout" };
 
-export const bashHandler = ({
+export const shellHandler = ({
   command,
   cwd,
   timeoutMs,
-}: BashParams): Effect.Effect<BashResult, BashError, CommandExecutor | ApprovalPolicy> =>
+}: ShellParams): Effect.Effect<ShellResult, ShellError, CommandExecutor | ApprovalPolicy> =>
   Effect.gen(function* () {
     const approval = yield* ApprovalPolicy;
-    yield* approval.requireApproval({ kind: "bash", command, cwd });
+    yield* approval.requireApproval({ kind: "shell", command, cwd });
 
     const timeout = Duration.millis(timeoutMs ?? DEFAULT_TIMEOUT_MS);
     const env = buildScrubbedEnv();
@@ -138,7 +143,7 @@ export const bashHandler = ({
     );
   }).pipe(
     Effect.catchTags({
-      BadArgument: (e) => Effect.fail(new BashSpawnFailed({ command, message: e.message })),
-      SystemError: (e) => Effect.fail(new BashSpawnFailed({ command, message: e.message })),
+      BadArgument: (e) => Effect.fail(new ShellSpawnFailed({ command, message: e.message })),
+      SystemError: (e) => Effect.fail(new ShellSpawnFailed({ command, message: e.message })),
     }),
   );

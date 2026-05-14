@@ -160,14 +160,70 @@ higher-level primitive that maintains history (`Ref.Ref<Prompt.Prompt>`)
 and re-invokes `generateText` per call, but it still doesn't loop on
 its own. If you want true multi-turn-until-stop, that's caller-driven.
 
-`src/cli.ts` currently does **one** `generateText` call per `run` command,
-so it's a single-turn CLI by design — for most concrete prompts Claude
-returns a full answer with a couple of tool calls in one response, but it
-will not chain follow-up turns on its own.
+How the reference harnesses do the outer loop:
+
+- `repos/codex/codex-rs/core/src/session/turn.rs:384` — `loop { run_sampling_request(...); if needs_follow_up { continue } else { break } }`. Doc-comment at line 121 spells out the contract.
+- `repos/opencode/packages/llm/src/tool-runtime.ts:76` — recursive `loop(request, step, ...)` that re-invokes the model while `finishReason === "tool-calls"`.
+
+Both: keep calling the model until `finishReason` is something other than `"tool-calls"`.
+
+**Status: resolved.** The outer loop lives in `packages/harness/src/agent-loop.ts` (`runAgentTurn` + `stepCountIs`). Both call sites — `packages/tui/src/chat.ts:runChatTurn` (chat mode) and `packages/cli/src/cli.ts:runCommand` (one-shot `run` mode) — drive it with `stepCountIs(25)`. The helper returns `Stream<TurnEvent, never>`; errors surface as trailing `{ kind: "error" }` events rather than stream failures. See `packages/harness/test/agent-loop.test.ts` for the four-case contract (continue, cap, stream-error, `pause`).
 
 ---
 
-## 4. Anthropic reserves a handful of tool names
+## 4. Two non-obvious traps when looping `Chat.streamText`
+
+If you're writing an outer loop around `Chat.streamText` (or extending
+`runAgentTurn`), these two cost real time:
+
+**A. `Prompt.make("")` adds a phantom user turn; `Prompt.empty` does not.**
+
+The recursive call in an agent loop should pass an empty prompt so the
+provider sees `[…, assistant, tool_result]` and not
+`[…, assistant, tool_result, user("")]`. But `Prompt.make("")` builds a
+real user message with empty text, because `Prompt.make` branches on the
+input shape:
+
+```ts
+// repos/effect/packages/ai/ai/src/Prompt.ts:1486
+export const make = (input: RawInput): Prompt => {
+  if (Predicate.isString(input)) {
+    const part = makePart("text", { text: input });
+    const message = makeMessage("user", { content: [part] });
+    return makePrompt([message]); // <- one user message, even if text is ""
+  }
+  if (Predicate.isIterable(input)) {
+    return makePrompt(decodeMessagesSync(Arr.fromIterable(input), { errors: "all" }));
+  }
+  return input;
+};
+```
+
+So pass `Prompt.empty` (or `[]`) to the recursive call. `runAgentTurn`
+does this at `packages/harness/src/agent-loop.ts:runAgentTurn` — see the
+`step === 0 ? prompt : Prompt.empty` line.
+
+**B. `tool-result` parts arrive AFTER the `finish` part on the stream.**
+
+`Chat.streamText` (and `LanguageModel.streamText`) emits the provider's
+`finish` event when the **model** is done generating. The toolkit then
+dispatches tool calls and emits their `tool-result` parts onto the same
+stream — which means a stream's part order is, in general:
+
+```
+text-delta… tool-call… finish  tool-result… (end of stream)
+```
+
+Don't assert "nothing comes after finish" in tests, and don't gate
+post-finish handling on the stream being exhausted before tool results
+arrive. Track the finish reason via `Stream.tap` and run any
+"should-I-recurse" logic in a continuation stream concatenated after the
+model stream, not in the `finish` handler itself. `runAgentTurn` reads
+`finishRef` only inside the continuation's `Stream.unwrap`.
+
+---
+
+## 5. Anthropic reserves a handful of tool names
 
 **Symptom.** A `generateText` (or `streamText`) call rejects with a schema
 decode error like:
@@ -191,8 +247,11 @@ bash, code_execution, computer, str_replace_based_edit_tool,
 str_replace_editor, web_search
 ```
 
-Codex uses `shell` for the same concept; that's a safe substitute for
-`bash`.
+We hit this exact bug, which is why our shell tool is registered as `shell`
+(`packages/tools/src/shell.ts`), not `bash`. Codex makes the same choice.
+A structural guard test in `packages/harness/test/reserved-tool-names.test.ts`
+asserts `HarnessToolkit`'s tool names are disjoint from the reserved set, so
+re-introducing a collision fails CI rather than the next live stream.
 
 **Why.** `repos/effect/packages/ai/anthropic/src/AnthropicTool.ts:529` —
 the Anthropic adapter holds a `ProviderToolNamesMap` that unconditionally
@@ -204,9 +263,9 @@ name never gets a chance to match.
 
 The adapter doesn't check whether the user actually registered a
 provider-defined tool; the rewrite is name-based and global. So even
-though our `bash` is just `Tool.make("bash", …)` against our own handler,
-any call the model labels `"bash"` is interpreted as targeting
-`Bash_20241022` / `Bash_20250124` and decoding blows up against our
+when our tool was `Tool.make("bash", …)` against our own handler, any
+call the model labelled `"bash"` got interpreted as targeting
+`Bash_20241022` / `Bash_20250124` and decoding blew up against our
 narrower union.
 
 See: `repos/effect/packages/ai/anthropic/src/AnthropicTool.ts:529` for the
@@ -219,6 +278,35 @@ targets.
 
 Smaller things that aren't worth a full pattern but will save five minutes
 of head-scratching.
+
+### `oxlint`'s `ignorePatterns` doesn't suppress nested-config discovery
+
+`oxlint` walks up from each file to find the closest `.oxlintrc.json` — and
+it discovers those configs **before** it consults the root config's
+`ignorePatterns`. So a vendored subtree under `repos/` that ships its own
+`.oxlintrc.json` (opencode does, for example) can crash the entire lint
+run on a config-shape mismatch, even with `"ignorePatterns": ["repos/**"]`
+set at the root.
+
+The error reads like a config-schema bug, not an ignore bug:
+
+```
+Failed to parse oxlint configuration file.
+  x The `options.typeAware` option is only supported in the root config,
+    but it was found in /…/repos/opencode/.oxlintrc.json.
+```
+
+Fix: scope the `lint` script to our own tree so oxlint never sees the
+vendored configs.
+
+```json
+// package.json
+"lint": "oxlint packages",
+```
+
+Don't rely on `ignorePatterns` alone when you add a new `repos/` entry —
+check whether the vendored repo ships its own `.oxlintrc.json` and, if so,
+keep `oxlint` scoped to `packages/`.
 
 ### `oxfmt` does not read `.oxfmtignore`
 

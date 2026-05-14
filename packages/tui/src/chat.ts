@@ -1,103 +1,14 @@
 import { Prompt, type Chat } from "@effect/ai";
-import type * as Response from "@effect/ai/Response";
 import { Effect, Ref, Stream } from "effect";
-import { HarnessToolkit } from "@effectclanker/harness";
+import { runAgentTurn, stepCountIs, type TurnEvent } from "@effectclanker/harness";
 
-// Events emitted while consuming one turn's Stream<Response.StreamPart>.
-// The UI projects these into rendered transcript entries; tests assert on the
-// collected sequence directly.
-export type TurnEvent =
-  | { readonly kind: "text-delta"; readonly id: string; readonly delta: string }
-  | {
-      readonly kind: "tool-call";
-      readonly id: string;
-      readonly name: string;
-      readonly params: unknown;
-    }
-  | {
-      readonly kind: "tool-result";
-      readonly id: string;
-      readonly name: string;
-      readonly isFailure: boolean;
-      readonly result: unknown;
-    }
-  | { readonly kind: "finish"; readonly reason: string }
-  | { readonly kind: "error"; readonly message: string };
+export type { TurnEvent };
 
 export interface RunChatTurnOptions {
   readonly chat: Chat.Service;
   readonly prompt: string;
   readonly onEvent: (event: TurnEvent) => Effect.Effect<void>;
 }
-
-// Cast helper: StreamPart<Tools> narrows away tool-call/tool-result when Tools
-// is `never`, so we widen to access the discriminant `type` and per-kind fields.
-type AnyStreamPart =
-  | (Response.StreamPart<Record<string, never>> & { readonly type: string })
-  | {
-      readonly type: "tool-call";
-      readonly id: string;
-      readonly name: string;
-      readonly params: unknown;
-    }
-  | {
-      readonly type: "tool-result";
-      readonly id: string;
-      readonly name: string;
-      readonly isFailure: boolean;
-      readonly result: unknown;
-    };
-
-const partToEvent = (raw: unknown): TurnEvent | undefined => {
-  const part = raw as AnyStreamPart;
-  switch (part.type) {
-    case "text-delta": {
-      const td = part as { readonly id: string; readonly delta: string };
-      return { kind: "text-delta", id: td.id, delta: td.delta };
-    }
-    case "tool-call": {
-      const tc = part as {
-        readonly id: string;
-        readonly name: string;
-        readonly params: unknown;
-      };
-      return { kind: "tool-call", id: tc.id, name: tc.name, params: tc.params };
-    }
-    case "tool-result": {
-      const tr = part as {
-        readonly id: string;
-        readonly name: string;
-        readonly isFailure: boolean;
-        readonly result: unknown;
-      };
-      return {
-        kind: "tool-result",
-        id: tr.id,
-        name: tr.name,
-        isFailure: tr.isFailure,
-        result: tr.result,
-      };
-    }
-    case "finish": {
-      const fp = part as { readonly reason: string };
-      return { kind: "finish", reason: fp.reason };
-    }
-    case "error": {
-      const ep = part as { readonly error: unknown };
-      return {
-        kind: "error",
-        message:
-          ep.error instanceof Error
-            ? ep.error.message
-            : typeof ep.error === "string"
-              ? ep.error
-              : JSON.stringify(ep.error),
-      };
-    }
-    default:
-      return undefined;
-  }
-};
 
 // Result of dispatching a slash command. The chat loop reacts to each variant:
 //   - `handled` — show the returned text in the transcript, do not call the model
@@ -138,28 +49,12 @@ export const slashCommand = (
   }
 };
 
-// Drive one chat turn. Streams `chat.streamText(...)` through HarnessToolkit,
-// converts each part into a TurnEvent, and hands events to `onEvent`. Any
-// failure on the stream's error channel is converted into a single
-// `{ kind: "error" }` event so the loop stays alive.
+// Drive one chat turn. Thin adapter over `runAgentTurn`: streams the agent loop
+// (model + tool dispatch across as many rounds as the model needs, capped at
+// `stepCountIs(25)`) and forwards each emitted `TurnEvent` to `onEvent`. The
+// underlying helper surfaces all errors as `{ kind: "error" }` events, so this
+// adapter's Effect never fails on its error channel.
 export const runChatTurn = (options: RunChatTurnOptions) => {
   const { chat, onEvent, prompt } = options;
-  const userPrompt: Prompt.RawInput = prompt;
-  return chat.streamText({ prompt: userPrompt, toolkit: HarnessToolkit }).pipe(
-    Stream.runForEach((part) => {
-      const event = partToEvent(part);
-      return event === undefined ? Effect.void : onEvent(event);
-    }),
-    Effect.catchAll((error) =>
-      onEvent({
-        kind: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : typeof error === "string"
-              ? error
-              : JSON.stringify(error),
-      }),
-    ),
-  );
+  return runAgentTurn({ chat, prompt, stopWhen: stepCountIs(25) }).pipe(Stream.runForEach(onEvent));
 };

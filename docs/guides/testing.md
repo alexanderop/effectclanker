@@ -234,9 +234,9 @@ that involves the spec-to-handler wiring or the loop itself.
 
 ---
 
-## Why the bash timeout test uses `it.live`, not `TestClock`
+## Why the shell timeout test uses `it.live`, not `TestClock`
 
-`bashHandler` (`src/tools/bash.ts`) implements its timeout with
+`shellHandler` (`packages/tools/src/shell.ts`) implements its timeout with
 `Effect.race(process.exitCode, Effect.sleep(timeout))`. `Effect.sleep`
 respects `TestClock`, so on the surface the test looks like it should be
 mockable. It isn't — the racing process is started via
@@ -247,7 +247,7 @@ mockable. It isn't — the racing process is started via
 running in wall time, and the race resolves to "timed out" before the
 child has produced any output — so you can't assert on real exit behaviour.
 
-The `bash.test.ts` "kills a long-running command past its timeout"
+The `shell.test.ts` "kills a long-running command past its timeout"
 case is therefore an `it.live` test. Determinism here would require
 mocking `CommandExecutor` with a fake-process implementation that
 respects `TestClock`. That's a much larger change; until we need it,

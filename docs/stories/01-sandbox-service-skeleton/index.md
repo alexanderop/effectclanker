@@ -2,6 +2,14 @@
 
 > Epic 1 / Story 1 from [`docs/backlog.md`](../../backlog.md).
 > Estimated size: **half a day** for a junior who has skimmed `docs/index.md`.
+>
+> **Stale paths/identifiers — needs reauthoring before pickup.** This spec
+> predates two refactors: (1) the monorepo split, so `src/tools/bash.ts` is
+> now `packages/tools/src/shell.ts` (and `test/tools/bash.test.ts` is
+> `packages/tools/test/shell.test.ts`); (2) the rename of the shell tool
+> from `bash` to `shell` (see [gotchas §4](../../patterns/effect-ai-gotchas.md#4-anthropic-reserves-a-handful-of-tool-names)).
+> Read symbols `bashHandler`/`BashTool`/`BashError` below as
+> `shellHandler`/`ShellTool`/`ShellError`.
 
 ## In one sentence
 

@@ -4,7 +4,7 @@ import { Effect, Layer } from "effect";
 
 const describeRequest = (request: ApprovalRequest): string => {
   switch (request.kind) {
-    case "bash": {
+    case "shell": {
       const where = request.cwd ? ` (cwd=${request.cwd})` : "";
       return `Run shell command${where}: ${request.command ?? ""}`;
     }

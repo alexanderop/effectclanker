@@ -6,9 +6,9 @@ import { HarnessToolkitLayer } from "@effectclanker/harness";
 import { runChatTurn, slashCommand, type TurnEvent } from "../src/chat.ts";
 import { withLanguageModel } from "./utilities.ts";
 
-const finishPart = (): Response.StreamPartEncoded => ({
+const finishPart = (reason: Response.FinishReason = "stop"): Response.StreamPartEncoded => ({
   type: "finish",
-  reason: "stop",
+  reason,
   usage: {
     inputTokens: 0,
     outputTokens: 0,
@@ -46,6 +46,40 @@ const toolCallPart = (id: string, name: string, params: unknown): Response.Strea
 });
 
 describe("chat loop", () => {
+  it.effect("single runChatTurn loops across multiple model rounds", () => {
+    let call = 0;
+    const streamText = () => {
+      call++;
+      if (call === 1) {
+        return [toolCallPart("call-1", "update_plan", { steps: [] }), finishPart("tool-calls")];
+      }
+      return [...text("text-2", "loop done"), finishPart("stop")];
+    };
+
+    return Effect.gen(function* () {
+      const events = yield* Ref.make<ReadonlyArray<TurnEvent>>([]);
+      const chat = yield* Chat.empty;
+
+      yield* runChatTurn({
+        chat,
+        prompt: "go",
+        onEvent: (event) => Ref.update(events, (xs) => [...xs, event]),
+      });
+
+      expect(call).toBe(2);
+      const collected = yield* Ref.get(events);
+      const text1 = collected
+        .filter((e) => e.kind === "text-delta")
+        .map((e) => (e.kind === "text-delta" ? e.delta : ""))
+        .join("");
+      expect(text1).toContain("loop done");
+      const toolCalls = collected.filter((e) => e.kind === "tool-call");
+      expect(toolCalls).toHaveLength(1);
+      const toolResults = collected.filter((e) => e.kind === "tool-result");
+      expect(toolResults).toHaveLength(1);
+    }).pipe(withLanguageModel({ streamText }), Effect.provide(HarnessToolkitLayer));
+  });
+
   it.effect("preserves prior turn's tool result across two turns", () => {
     let call = 0;
     const streamText = (opts: { readonly prompt: unknown }) => {

@@ -5,7 +5,7 @@ and [`@effect/ai`](https://effect.website/docs/ai/introduction). The project
 exists to learn Effect by reading the OpenAI Codex source and reproducing
 its patterns in TypeScript. It is not a polished product.
 
-The harness wires six tools (`read`, `write`, `edit`, `bash`, `grep`,
+The harness wires six tools (`read`, `write`, `edit`, `shell`, `grep`,
 `glob`) into an Anthropic-backed `LanguageModel`. You give it a prompt; it
 calls tools until it has an answer.
 

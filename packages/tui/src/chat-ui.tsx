@@ -53,23 +53,68 @@ const displayCwd = (): string => {
 const truncate = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max)}…` : text;
 
-const formatToolArgs = (params: unknown): string => {
-  if (params === undefined || params === null) return "";
-  if (typeof params === "string") return truncate(params, 120);
-  return truncate(JSON.stringify(params), 120);
+const shortenPath = (path: string): string => {
+  const home = homedir();
+  if (home && path.startsWith(`${home}/`)) return `~${path.slice(home.length)}`;
+  const cwd = process.cwd();
+  if (path.startsWith(`${cwd}/`)) return path.slice(cwd.length + 1);
+  return path;
 };
 
-const formatToolResult = (result: unknown): string => {
-  if (result === null || result === undefined) return String(result);
-  const text = typeof result === "string" ? result : JSON.stringify(result);
-  return truncate(text, 240);
+type ToolTitle = { readonly name: string; readonly arg: string };
+
+const formatToolTitle = (name: string, params: unknown): ToolTitle => {
+  const p = (params ?? {}) as Record<string, unknown>;
+  switch (name) {
+    case "shell": {
+      const command = typeof p["command"] === "string" ? (p["command"] as string) : "";
+      return { name: `$ ${command}`, arg: "" };
+    }
+    case "read":
+    case "edit":
+    case "write": {
+      const path = typeof p["path"] === "string" ? shortenPath(p["path"] as string) : "";
+      return { name, arg: path };
+    }
+    case "glob": {
+      const pattern = typeof p["pattern"] === "string" ? (p["pattern"] as string) : "";
+      return { name, arg: pattern };
+    }
+    case "grep": {
+      const pattern = typeof p["pattern"] === "string" ? `"${p["pattern"] as string}"` : "";
+      const path = typeof p["path"] === "string" ? ` ${shortenPath(p["path"] as string)}` : "";
+      return { name, arg: `${pattern}${path}` };
+    }
+    default: {
+      if (params === undefined || params === null) return { name, arg: "" };
+      if (typeof params === "string") return { name, arg: truncate(params, 200) };
+      return { name, arg: truncate(JSON.stringify(params), 200) };
+    }
+  }
+};
+
+const RESULT_PREVIEW_LINES = 10;
+
+type ToolOutput = { readonly lines: ReadonlyArray<string>; readonly remaining: number };
+
+const formatToolOutput = (result: unknown, maxLines: number): ToolOutput => {
+  const raw =
+    result === null || result === undefined
+      ? String(result)
+      : typeof result === "string"
+        ? result
+        : JSON.stringify(result, null, 2);
+  const all = raw.split("\n");
+  while (all.length > 0 && all[all.length - 1] === "") all.pop();
+  const lines = all.slice(0, maxLines);
+  return { lines, remaining: Math.max(0, all.length - maxLines) };
 };
 
 const describePendingApproval = (pending: PendingApproval): string => {
   const r = pending.request;
   switch (r.kind) {
-    case "bash":
-      return `Run bash: ${r.command ?? ""}`;
+    case "shell":
+      return `Run shell: ${r.command ?? ""}`;
     case "write":
       return `Write file: ${r.path ?? ""}`;
     case "edit":
@@ -180,45 +225,46 @@ const ErrorBubble: React.FC<{
   </Box>
 );
 
+// Pi-style tool block — no border, just a subtle background tint
+// (toolPendingBg / toolSuccessBg / toolErrorBg from pi's dark theme) plus a
+// bold title line and a dim multi-line output preview underneath.
+const TOOL_PENDING_BG = "#282832";
+const TOOL_SUCCESS_BG = "#283228";
+const TOOL_ERROR_BG = "#3c2828";
+
 const ToolCard: React.FC<{ readonly group: ToolGroup }> = ({ group }) => {
   const status: "pending" | "success" | "error" =
     group.result === undefined ? "pending" : group.result.isFailure ? "error" : "success";
-  const borderColor = status === "pending" ? "gray" : status === "error" ? "red" : "green";
-  const accent = status === "error" ? "red" : status === "success" ? "green" : "cyan";
-
-  const bashCommand =
-    group.name === "bash" && typeof (group.params as { command?: unknown })?.command === "string"
-      ? (group.params as { command: string }).command
-      : null;
+  const bg =
+    status === "pending" ? TOOL_PENDING_BG : status === "error" ? TOOL_ERROR_BG : TOOL_SUCCESS_BG;
+  const titleColor = status === "error" ? "red" : "cyan";
+  const title = formatToolTitle(group.name, group.params);
+  const output =
+    group.result === undefined ? null : formatToolOutput(group.result.result, RESULT_PREVIEW_LINES);
 
   return (
-    <Box
-      marginTop={1}
-      borderStyle="round"
-      borderColor={borderColor}
-      paddingX={1}
-      flexDirection="column"
-    >
-      {bashCommand !== null ? (
-        <Text color={accent} bold>
-          {`$ ${bashCommand}`}
+    <Box marginTop={1} paddingX={1} flexDirection="column" backgroundColor={bg}>
+      <Text backgroundColor={bg}>
+        <Text bold color={titleColor} backgroundColor={bg}>
+          {title.name}
         </Text>
-      ) : (
-        <Text>
-          <Text bold color={accent}>
-            {group.name}
-          </Text>
-          {formatToolArgs(group.params) ? (
-            <Text dimColor>{` ${formatToolArgs(group.params)}`}</Text>
-          ) : null}
-        </Text>
-      )}
-      {group.result === undefined ? (
-        <Text dimColor italic>
+        {title.arg ? <Text color="cyan" backgroundColor={bg}>{` ${title.arg}`}</Text> : null}
+      </Text>
+      {output === null ? (
+        <Text italic dimColor backgroundColor={bg}>
           …running
         </Text>
-      ) : (
-        <Text dimColor>{formatToolResult(group.result.result)}</Text>
+      ) : output.lines.length === 0 && output.remaining === 0 ? null : (
+        <Box flexDirection="column" backgroundColor={bg}>
+          {output.lines.map((line, i) => (
+            <Text key={i} color="gray" backgroundColor={bg}>
+              {line}
+            </Text>
+          ))}
+          {output.remaining > 0 ? (
+            <Text dimColor backgroundColor={bg}>{`… (${output.remaining} more lines)`}</Text>
+          ) : null}
+        </Box>
       )}
     </Box>
   );

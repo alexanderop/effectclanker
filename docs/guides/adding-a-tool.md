@@ -58,7 +58,7 @@ export const exampleHandler = ({
 - **Handler success type matches `success` schema, handler failure type
   matches `failure` schema** (typically `string`).
 - **No `Effect.async` unless you have a callback API.** Prefer
-  `Effect.tryPromise({ try, catch })`. `bash` is the only legitimate
+  `Effect.tryPromise({ try, catch })`. `shell` is the only legitimate
   `Effect.async` use case in the codebase.
 
 ## 2. Register in `packages/harness/src/toolkit.ts`
@@ -72,7 +72,7 @@ export const HarnessToolkit = Toolkit.make(
   ReadTool,
   WriteTool,
   EditTool,
-  BashTool,
+  ShellTool,
   GrepTool,
   GlobTool,
   ExampleTool,

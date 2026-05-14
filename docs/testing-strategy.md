@@ -65,8 +65,8 @@ decoding, business logic, filesystem behaviour, error tags.
 - `Effect.either` + `expectLeft` — assert a typed failure and narrow it.
   See `test/utilities.ts:91`.
 - `it.live` — opt out of `TestClock` for the _one_ case where it doesn't
-  work (spawned-process timeout in `bash.test.ts`; rationale in
-  `guides/testing.md` § "Why the bash timeout test uses `it.live`").
+  work (spawned-process timeout in `shell.test.ts`; rationale in
+  `guides/testing.md` § "Why the shell timeout test uses `it.live`").
 
 **Do not** mock `node:fs` or `node:child_process` at this tier — the few
 milliseconds of real I/O catch encoding, path, and permission bugs that
@@ -162,7 +162,7 @@ defensible.
   filesystem on purpose.
 - **No `TestClock` for spawned processes.** `Effect.sleep` respects
   `TestClock`, but `@effect/platform`'s `Command.start` spawns a real OS
-  child whose wall-clock can't be advanced. The bash timeout test uses
+  child whose wall-clock can't be advanced. The shell timeout test uses
   `it.live` instead. Full rationale in `guides/testing.md:188`.
 - **No snapshot tests of `Response` parts.** The encoded shape changes
   between `@effect/ai` versions; asserting on specific fields

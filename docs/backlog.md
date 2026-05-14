@@ -11,7 +11,7 @@ multiple downstream epics (sandbox → safe local-dev; rollout → resume/compac
 streaming → TUI), so prefer top-to-bottom unless a downstream task is small and
 isolated.
 
-Today the harness has: 8 tools (`read`, `write`, `edit`, `apply_patch`, `bash`,
+Today the harness has: 8 tools (`read`, `write`, `edit`, `apply_patch`, `shell`,
 `grep`, `glob`, `update_plan`), an `ApprovalPolicy` service (auto / interactive
 / deny) and a `PlanStore`. Everything below is missing.
 
@@ -22,7 +22,7 @@ Today the harness has: 8 tools (`read`, `write`, `edit`, `apply_patch`, `bash`,
 `repos/codex/codex-rs/sandboxing/src/landlock.rs`,
 `repos/codex/codex-rs/core/src/safety.rs`
 
-**Why:** the harness `bash` tool spawns commands directly via Effect's
+**Why:** the harness `shell` tool spawns commands directly via Effect's
 `CommandExecutor` with zero filesystem or network restriction — every approval
 mode but `deny` lets the model execute arbitrary code as the user. Codex wraps
 every shell call in a platform sandbox (Seatbelt on macOS, Landlock+bwrap on
@@ -37,13 +37,13 @@ much agency we can responsibly grant the model.
   no-op default layer so existing tests stay green; mirror the
   `SandboxPolicy` enum from `sandboxing/src/lib.rs` (`ReadOnly`,
   `WorkspaceWrite`, `DangerFullAccess`).
-- Implement a macOS Seatbelt backend layer that wraps `bash` in
+- Implement a macOS Seatbelt backend layer that wraps `shell` in
   `sandbox-exec -p <profile>`, porting the deny-by-default policy snippets
   from `sandboxing/src/seatbelt_base_policy.sbpl` and
   `seatbelt_network_policy.sbpl`.
 - Implement a Linux Landlock/bwrap backend layer, modeled on
   `sandboxing/src/landlock.rs` and `sandboxing/src/bwrap.rs`, and wire it
-  into `bashHandler` so `--approval auto` only runs sandboxed.
+  into `shellHandler` so `--approval auto` only runs sandboxed.
 - Add a `--sandbox` CLI option (`read-only`/`workspace-write`/`danger`)
   exposed in `src/cli.ts` that selects the corresponding sandbox layer.
 
@@ -135,7 +135,7 @@ overflow on any long-running task.
 `repos/codex/codex-rs/core/src/safety.rs`
 
 **Why:** today's three-option approval (`auto`/`interactive`/`deny`) is too
-coarse — every `bash` call either runs without asking or pauses for y/N.
+coarse — every `shell` call either runs without asking or pauses for y/N.
 Codex maintains a per-session set of approved command prefixes (`git`,
 `ls`, `cargo build`…) and an execpolicy DSL for "always allow", "ask once",
 "never". This is the difference between an agent that pauses 40 times per
@@ -193,7 +193,7 @@ harness tool for free.
 
 **Why:** Codex lets users hook into lifecycle events (pre-tool, post-tool,
 session-start, session-end, on-prompt) to run arbitrary scripts —
-formatters after edits, lint after `bash`, custom logging, notifications.
+formatters after edits, lint after `shell`, custom logging, notifications.
 The harness has no extension point: every customization requires editing
 TypeScript and recompiling. Hooks turn the harness into a platform.
 

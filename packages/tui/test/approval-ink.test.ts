@@ -10,10 +10,10 @@ describe("ApprovalInkLayer", () => {
       const policy = yield* ApprovalPolicy;
       const ink = yield* ApprovalInk;
 
-      const fiber = yield* Effect.fork(policy.requireApproval({ kind: "bash", command: "ls" }));
+      const fiber = yield* Effect.fork(policy.requireApproval({ kind: "shell", command: "ls" }));
 
       const pending = yield* Queue.take(ink.requests);
-      expect(pending.request.kind).toBe("bash");
+      expect(pending.request.kind).toBe("shell");
       expect(pending.request.command).toBe("ls");
 
       yield* Deferred.succeed(pending.decision, true);

@@ -2,7 +2,7 @@ import { Context, Effect, Layer } from "effect";
 import { ApprovalDenied } from "./errors.ts";
 
 export interface ApprovalRequest {
-  readonly kind: "bash" | "write" | "edit" | "apply_patch";
+  readonly kind: "shell" | "write" | "edit" | "apply_patch";
   readonly command?: string | undefined;
   readonly cwd?: string | undefined;
   readonly path?: string | undefined;
