@@ -13,7 +13,9 @@ import {
   ApprovalInteractiveLayer,
   chatWithEnvironment,
   HarnessToolkitLayerBare,
+  loadAgentsFile,
   runAgentTurn,
+  Skills,
   stepCountIs,
   type TurnEvent,
 } from "@effectclanker/harness";
@@ -63,23 +65,55 @@ const renderToolResult = (result: unknown): string => {
   return JSON.stringify(result);
 };
 
+interface CumulativeUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}
+
 interface RunAccumulator {
   text: string;
   toolCalls: Array<Extract<TurnEvent, { kind: "tool-call" }>>;
   toolResults: Array<Extract<TurnEvent, { kind: "tool-result" }>>;
   finishReason: string;
   errors: Array<string>;
+  usage: CumulativeUsage;
 }
+
+// Same shape as the chat-ui footer stats line. Each Round's `finish` event
+// contributes; reporting cumulative numbers at end of turn makes a single-turn
+// `run` summary directly comparable to chat's session totals.
+const formatTokens = (count: number): string => {
+  if (count < 1000) return count.toString();
+  if (count < 10_000) return `${(count / 1000).toFixed(1)}k`;
+  if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
+  if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  return `${Math.round(count / 1_000_000)}M`;
+};
+
+const formatUsageLine = (usage: CumulativeUsage): string | null => {
+  const parts: Array<string> = [];
+  if (usage.inputTokens > 0) parts.push(`↑${formatTokens(usage.inputTokens)}`);
+  if (usage.outputTokens > 0) parts.push(`↓${formatTokens(usage.outputTokens)}`);
+  if (usage.cacheReadTokens > 0) parts.push(`R${formatTokens(usage.cacheReadTokens)}`);
+  if (usage.cacheWriteTokens > 0) parts.push(`W${formatTokens(usage.cacheWriteTokens)}`);
+  return parts.length === 0 ? null : parts.join(" ");
+};
 
 const runCommand = Command.make(
   "run",
   { model: modelOption, prompt: promptArg, approval: approvalOption },
   ({ approval, model, prompt }) =>
     Effect.gen(function* () {
+      const skills = yield* Skills;
+      const agentsFile = yield* loadAgentsFile(process.cwd());
       const chat = yield* chatWithEnvironment({
         cwd: process.cwd(),
         platform: process.platform,
         date: new Date(),
+        agentsFile,
+        skills: skills.all,
       });
       const acc: RunAccumulator = {
         text: "",
@@ -87,6 +121,7 @@ const runCommand = Command.make(
         toolResults: [],
         finishReason: "unknown",
         errors: [],
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       };
 
       // Stream the agent loop live: print each tool-call, tool-result, and
@@ -108,6 +143,10 @@ const runCommand = Command.make(
               );
             case "finish":
               acc.finishReason = event.reason;
+              acc.usage.inputTokens += event.usage.inputTokens;
+              acc.usage.outputTokens += event.usage.outputTokens;
+              acc.usage.cacheReadTokens += event.usage.cacheReadTokens;
+              acc.usage.cacheWriteTokens += event.usage.cacheWriteTokens;
               return Effect.void;
             case "error":
               acc.errors.push(event.message);
@@ -147,6 +186,10 @@ const runCommand = Command.make(
       }
 
       yield* Console.log(`finish: ${acc.finishReason}`);
+      const usageLine = formatUsageLine(acc.usage);
+      if (usageLine !== null) {
+        yield* Console.log(`tokens: ${usageLine}`);
+      }
     }).pipe(
       // Layers are stacked outermost-last so each call satisfies the layer
       // above it. AnthropicClient is scoped inside the handler so `--help`

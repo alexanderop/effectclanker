@@ -105,6 +105,10 @@ export type ApplyPatchError = typeof ApplyPatchError.Type;
 // Convert a PlatformError from FileSystem operations into a domain-typed FileError.
 // `SystemError.reason` carries the structured outcome (NotFound, PermissionDenied, …)
 // so callers can `catchTag` instead of substring-matching error messages.
+// EISDIR surfaces as `reason: "BadResource"` (see
+// repos/effect/packages/platform-node-shared/src/internal/error.ts) — without
+// disambiguating, the model gets an opaque "BadResource" and retries the same
+// read; tagging it as IsADirectory tells it to switch tools instead.
 export const mapFileError =
   (path: string) =>
   (e: PlatformError): FileError => {
@@ -116,6 +120,13 @@ export const mapFileError =
         return new FileNotFound({ path });
       case "PermissionDenied":
         return new FileAccessDenied({ path });
+      case "BadResource": {
+        const cause = e.cause as NodeJS.ErrnoException | undefined;
+        if (cause?.code === "EISDIR" || e.description?.startsWith("EISDIR")) {
+          return new IsADirectory({ path });
+        }
+        return new FileIOError({ path, message: e.message });
+      }
       default:
         return new FileIOError({ path, message: e.message });
     }

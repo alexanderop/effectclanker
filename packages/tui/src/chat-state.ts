@@ -1,4 +1,4 @@
-import type { TurnEvent } from "./chat.ts";
+import type { RoundUsage, TurnEvent } from "@effectclanker/harness";
 import type { PlanStep } from "@effectclanker/tools";
 
 // Imperative store that bridges the Effect-driven chat loop and the React/Ink
@@ -26,10 +26,42 @@ export type TranscriptEntry =
 
 export type ChatStatus = "ready" | "streaming";
 
+// Cumulative session-wide token totals across every Round's finish event.
+// Rendered as a pi-style status line in the chat footer; non-zero
+// `cacheReadTokens` is the live signal that the cacheControl breakpoint on
+// the system message is firing.
+export interface CumulativeUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly cacheWriteTokens: number;
+}
+
+const EMPTY_CUMULATIVE_USAGE: CumulativeUsage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+};
+
+const addUsage = (acc: CumulativeUsage, delta: RoundUsage): CumulativeUsage => ({
+  inputTokens: acc.inputTokens + delta.inputTokens,
+  outputTokens: acc.outputTokens + delta.outputTokens,
+  cacheReadTokens: acc.cacheReadTokens + delta.cacheReadTokens,
+  cacheWriteTokens: acc.cacheWriteTokens + delta.cacheWriteTokens,
+});
+
 export interface ChatStateSnapshot {
   readonly transcript: ReadonlyArray<TranscriptEntry>;
   readonly status: ChatStatus;
   readonly plan: ReadonlyArray<PlanStep>;
+  readonly usage: CumulativeUsage;
+  // The most recent Round's usage. Cumulative `usage` keeps growing each round
+  // and is useful for caching diagnostics, but it does not represent *current*
+  // context-window occupancy — that's approximately the last round's
+  // input + cacheRead + cacheWrite tokens. Drives the Claude Code-style
+  // context-window bar in the status line.
+  readonly lastRoundUsage: RoundUsage | null;
 }
 
 type Listener = (snapshot: ChatStateSnapshot) => void;
@@ -49,10 +81,12 @@ export const makeChatStateController = (): ChatStateController => {
   let transcript: ReadonlyArray<TranscriptEntry> = [];
   let status: ChatStatus = "ready";
   let plan: ReadonlyArray<PlanStep> = [];
+  let usage: CumulativeUsage = EMPTY_CUMULATIVE_USAGE;
+  let lastRoundUsage: RoundUsage | null = null;
   const listeners = new Set<Listener>();
 
   const emit = (): void => {
-    const snap: ChatStateSnapshot = { transcript, status, plan };
+    const snap: ChatStateSnapshot = { transcript, status, plan, usage, lastRoundUsage };
     for (const cb of listeners) cb(snap);
   };
 
@@ -71,7 +105,7 @@ export const makeChatStateController = (): ChatStateController => {
   };
 
   return {
-    snapshot: () => ({ transcript, status, plan }),
+    snapshot: () => ({ transcript, status, plan, usage, lastRoundUsage }),
     subscribe: (listener) => {
       listeners.add(listener);
       return () => {
@@ -124,6 +158,8 @@ export const makeChatStateController = (): ChatStateController => {
           append({ kind: "error", message: event.message });
           break;
         case "finish":
+          usage = addUsage(usage, event.usage);
+          lastRoundUsage = event.usage;
           break;
       }
       emit();

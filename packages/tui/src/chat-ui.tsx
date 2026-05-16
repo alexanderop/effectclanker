@@ -2,12 +2,13 @@ import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatStateController, ChatStateSnapshot, TranscriptEntry } from "./chat-state.ts";
 import { copyToClipboard } from "./clipboard.ts";
 import type { PendingApproval } from "./approval-ink.ts";
+import { filterSlashCommands, type SlashCommandEntry } from "./slash-commands.ts";
 
 // --- hooks & helpers -------------------------------------------------------
 
@@ -52,6 +53,89 @@ const displayCwd = (): string => {
 
 const truncate = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max)}…` : text;
+
+// Token-count formatter copied from pi's footer.ts:21-27. Matches pi's
+// "1.2k / 45k / 1.5M" shape so the status line reads the same as pi's footer.
+const formatTokens = (count: number): string => {
+  if (count < 1000) return count.toString();
+  if (count < 10_000) return `${(count / 1000).toFixed(1)}k`;
+  if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
+  if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  return `${Math.round(count / 1_000_000)}M`;
+};
+
+const formatUsageLine = (usage: {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly cacheWriteTokens: number;
+}): string | null => {
+  const parts: Array<string> = [];
+  if (usage.inputTokens > 0) parts.push(`↑${formatTokens(usage.inputTokens)}`);
+  if (usage.outputTokens > 0) parts.push(`↓${formatTokens(usage.outputTokens)}`);
+  if (usage.cacheReadTokens > 0) parts.push(`R${formatTokens(usage.cacheReadTokens)}`);
+  if (usage.cacheWriteTokens > 0) parts.push(`W${formatTokens(usage.cacheWriteTokens)}`);
+  return parts.length === 0 ? null : parts.join(" ");
+};
+
+// Friendly model labels + context windows. Claude Code's status line shows
+// e.g. `[Opus 4.7 (1M context)]` next to the project name — so users can see
+// at a glance which model is wired up and how much room is left. Match the
+// model id against known prefixes; fall back to the raw id with no window.
+interface ModelLabel {
+  readonly name: string;
+  readonly contextWindow: number | null;
+}
+
+const MODEL_LABELS: ReadonlyArray<{
+  readonly prefix: string;
+  readonly name: string;
+  readonly contextWindow: number;
+}> = [
+  { prefix: "claude-opus-4-7", name: "Opus 4.7", contextWindow: 1_000_000 },
+  { prefix: "claude-opus-4-6", name: "Opus 4.6", contextWindow: 200_000 },
+  { prefix: "claude-opus-4", name: "Opus 4", contextWindow: 200_000 },
+  { prefix: "claude-sonnet-4-6", name: "Sonnet 4.6", contextWindow: 1_000_000 },
+  { prefix: "claude-sonnet-4-5", name: "Sonnet 4.5", contextWindow: 200_000 },
+  { prefix: "claude-sonnet-4", name: "Sonnet 4", contextWindow: 200_000 },
+  { prefix: "claude-haiku-4-5", name: "Haiku 4.5", contextWindow: 200_000 },
+  { prefix: "claude-haiku-4", name: "Haiku 4", contextWindow: 200_000 },
+];
+
+const formatContextWindow = (tokens: number): string => {
+  if (tokens >= 1_000_000) return `${tokens / 1_000_000}M`;
+  if (tokens >= 1000) return `${tokens / 1000}K`;
+  return tokens.toString();
+};
+
+export const resolveModelLabel = (model: string): ModelLabel => {
+  for (const entry of MODEL_LABELS) {
+    if (model.startsWith(entry.prefix)) {
+      return { name: entry.name, contextWindow: entry.contextWindow };
+    }
+  }
+  return { name: model, contextWindow: null };
+};
+
+// Approximate context occupancy for the most recent Round. Anthropic bills
+// input + cacheRead + cacheWrite separately, but all three count toward the
+// model's context window. Returns null when no round has finished yet.
+export const computeContextTokens = (
+  usage: {
+    readonly inputTokens: number;
+    readonly cacheReadTokens: number;
+    readonly cacheWriteTokens: number;
+  } | null,
+): number | null =>
+  usage === null ? null : usage.inputTokens + usage.cacheReadTokens + usage.cacheWriteTokens;
+
+const PROGRESS_BAR_WIDTH = 20;
+
+export const renderProgressBar = (ratio: number, width: number = PROGRESS_BAR_WIDTH): string => {
+  const clamped = Math.max(0, Math.min(1, ratio));
+  const filled = Math.round(clamped * width);
+  return "█".repeat(filled) + "░".repeat(width - filled);
+};
 
 const shortenPath = (path: string): string => {
   const home = homedir();
@@ -276,12 +360,15 @@ interface ChatAppProps {
   readonly controller: ChatStateController;
   readonly model: string;
   readonly approvalMode: "auto" | "interactive" | "deny";
+  readonly slashCommands: ReadonlyArray<SlashCommandEntry>;
   readonly onSubmit: (line: string) => void;
   readonly onCancel: () => void;
   readonly onExit: () => void;
   readonly pendingApproval: PendingApproval | null;
   readonly onApprovalDecision: (approve: boolean) => void;
 }
+
+const PICKER_MAX_ROWS = 10;
 
 export const ChatApp: React.FC<ChatAppProps> = ({
   approvalMode,
@@ -292,17 +379,54 @@ export const ChatApp: React.FC<ChatAppProps> = ({
   onExit,
   onSubmit,
   pendingApproval,
+  slashCommands,
 }) => {
   const state = useChatState(controller);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraftRaw] = useState("");
   const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  // Bumped on every programmatic setDraft to remount <TextInput> and place the
+  // cursor at the end. See docs/patterns/ink-gotchas.md §"Programmatic value
+  // changes don't move the cursor to the end".
+  const [editVersion, setEditVersion] = useState(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { exit } = useApp();
   const spinnerFrame = useSpinner(state.status === "streaming");
 
+  // Any setDraft that changes the value un-dismisses the picker — typing a
+  // letter after Esc should re-open it for the new draft.
+  const setDraft = (next: string): void => {
+    setDraftRaw((prev) => {
+      if (prev !== next) setDismissed(null);
+      return next;
+    });
+  };
+
+  const filtered = useMemo(() => filterSlashCommands(draft, slashCommands), [draft, slashCommands]);
+  const pickerVisible = filtered.length > 0 && dismissed !== draft;
+  useEffect(() => {
+    if (selectedIndex >= filtered.length) setSelectedIndex(0);
+  }, [filtered.length, selectedIndex]);
+  const visibleEntries = filtered.slice(0, PICKER_MAX_ROWS);
+  const longestTrigger = visibleEntries.reduce((n, e) => Math.max(n, e.trigger.length), 0);
+
   const cwdDisplay = useMemo(() => displayCwd(), []);
   const branch = useMemo(() => readGitBranch(), []);
   const pwdLine = branch === null ? cwdDisplay : `${cwdDisplay} (${branch})`;
+  const projectName = useMemo(() => basename(process.cwd()), []);
+  const modelLabel = useMemo(() => resolveModelLabel(model), [model]);
+  const contextTokens = computeContextTokens(state.lastRoundUsage);
+  const contextRatio =
+    modelLabel.contextWindow === null || contextTokens === null
+      ? 0
+      : contextTokens / modelLabel.contextWindow;
+  const contextPercent = Math.round(contextRatio * 100);
+  const contextBar = renderProgressBar(contextRatio);
+  const modelDisplay =
+    modelLabel.contextWindow === null
+      ? modelLabel.name
+      : `${modelLabel.name} (${formatContextWindow(modelLabel.contextWindow)} context)`;
 
   const lastErrorMessage = useMemo<string | null>(() => {
     const last = state.transcript.findLast((e) => e.kind === "error");
@@ -326,6 +450,20 @@ export const ChatApp: React.FC<ChatAppProps> = ({
   };
 
   useInput((input, key) => {
+    if (pickerVisible) {
+      if (key.upArrow) {
+        setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length);
+        return;
+      }
+      if (key.downArrow) {
+        setSelectedIndex((i) => (i + 1) % filtered.length);
+        return;
+      }
+      if (key.escape) {
+        setDismissed(draft);
+        return;
+      }
+    }
     if (key.ctrl && input === "c") {
       if (state.status === "streaming") {
         onCancel();
@@ -463,12 +601,45 @@ export const ChatApp: React.FC<ChatAppProps> = ({
       ) : null}
 
       <Box marginTop={1} flexDirection="column">
+        <Box>
+          <Text dimColor>{`[${projectName}] `}</Text>
+          <Text dimColor>{`[${modelDisplay}] `}</Text>
+          <Text color="gray">{contextBar}</Text>
+          <Text dimColor>{` ${contextPercent}%`}</Text>
+        </Box>
         <Text dimColor>{pwdLine}</Text>
+        {(() => {
+          const usageLine = formatUsageLine(state.usage);
+          return usageLine === null ? null : <Text dimColor>{usageLine}</Text>;
+        })()}
         <Text dimColor>
-          {`${model} • approval ${approvalMode} • ${state.status}`}
+          {`approval ${approvalMode} • ${state.status}`}
           {planLine === null ? "" : ` • plan: ${planLine}`}
         </Text>
       </Box>
+
+      {pickerVisible ? (
+        <Box
+          marginTop={1}
+          borderStyle="round"
+          borderColor="cyan"
+          flexDirection="column"
+          paddingX={1}
+        >
+          {visibleEntries.map((entry, i) => (
+            <Box key={entry.trigger} backgroundColor={i === selectedIndex ? USER_BG : undefined}>
+              <Text bold color={i === selectedIndex ? "white" : "cyan"}>
+                {entry.trigger.padEnd(longestTrigger + 2)}
+              </Text>
+              <Text dimColor>{entry.description}</Text>
+              <Text dimColor>{`  [${entry.source}]`}</Text>
+            </Box>
+          ))}
+          {filtered.length > PICKER_MAX_ROWS ? (
+            <Text dimColor>{`… (${filtered.length - PICKER_MAX_ROWS} more)`}</Text>
+          ) : null}
+        </Box>
+      ) : null}
 
       <Box
         marginTop={1}
@@ -480,9 +651,24 @@ export const ChatApp: React.FC<ChatAppProps> = ({
           {"> "}
         </Text>
         <TextInput
+          key={editVersion}
           value={draft}
           onChange={setDraft}
           onSubmit={(value) => {
+            if (pickerVisible) {
+              const entry = filtered[selectedIndex];
+              if (entry === undefined) return;
+              if (entry.source === "builtin") {
+                setDraft("");
+                setEditVersion((v) => v + 1);
+                onSubmit(entry.trigger);
+              } else {
+                setDraft(`${entry.trigger} `);
+                setEditVersion((v) => v + 1);
+                setSelectedIndex(0);
+              }
+              return;
+            }
             if (state.status === "streaming") return;
             if (pendingApproval !== null) return;
             if (value.length === 0) return;

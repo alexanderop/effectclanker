@@ -1,6 +1,12 @@
 import { Prompt, type Chat } from "@effect/ai";
-import { Effect, Ref, Stream } from "effect";
-import { runAgentTurn, stepCountIs, type TurnEvent } from "@effectclanker/harness";
+import { Effect, Stream } from "effect";
+import {
+  runAgentTurn,
+  stepCountIs,
+  type SkillsInterface,
+  type TurnEvent,
+} from "@effectclanker/harness";
+import { BUILTINS } from "./builtin-commands.ts";
 
 export type { TurnEvent };
 
@@ -21,7 +27,32 @@ export type SlashCommandResult =
   | { readonly kind: "quit" }
   | { readonly kind: "passthrough"; readonly text: string };
 
-const HELP_TEXT = "/exit quits, /clear resets conversation history, /help shows this list.";
+// /help body is derived from the live registries so adding a builtin or a
+// skill never requires touching a string constant.
+export const buildHelpText = (skills: SkillsInterface): string => {
+  const builtinLines = [...BUILTINS]
+    .toSorted((a, b) => a.name.localeCompare(b.name))
+    .map((b) => `  /${b.name} — ${b.description}`);
+  const skillLines = [...skills.all]
+    .toSorted((a, b) => a.name.localeCompare(b.name))
+    .map((s) => `  /${s.name} — ${s.description}`);
+  const sections = [`Slash commands:`, ...builtinLines];
+  if (skillLines.length > 0) {
+    sections.push("");
+    sections.push("Skills:");
+    sections.push(...skillLines);
+  }
+  return sections.join("\n");
+};
+
+// `$ARGUMENTS` substitution with append-fallback. Numbered placeholders ($1,
+// $N) are out of scope (see specs/pending/skills.md "Out of scope").
+export const renderSkillTemplate = (body: string, args: string): string => {
+  const trimmed = args.trim();
+  if (body.includes("$ARGUMENTS")) return body.replaceAll("$ARGUMENTS", trimmed);
+  if (trimmed.length > 0) return `${body}\n\n${trimmed}`;
+  return body;
+};
 
 // Dispatch a user-typed line. Lines that don't start with `/` are not slash
 // commands at all and would never call this function; the public contract here
@@ -29,25 +60,30 @@ const HELP_TEXT = "/exit quits, /clear resets conversation history, /help shows 
 export const slashCommand = (
   line: string,
   chat: Chat.Service,
+  skills: SkillsInterface,
   clearTo: Prompt.RawInput = Prompt.empty,
 ): Effect.Effect<SlashCommandResult> => {
   const trimmed = line.trim();
   if (!trimmed.startsWith("/")) {
     return Effect.succeed({ kind: "passthrough", text: line });
   }
-  const head = trimmed.split(/\s+/u, 1)[0] ?? trimmed;
-  switch (head) {
-    case "/exit":
-      return Effect.succeed({ kind: "quit" });
-    case "/help":
-      return Effect.succeed({ kind: "handled", text: HELP_TEXT });
-    case "/clear":
-      return Ref.set(chat.history, Prompt.make(clearTo)).pipe(
-        Effect.as<SlashCommandResult>({ kind: "cleared", text: "Conversation cleared." }),
-      );
-    default:
-      return Effect.succeed({ kind: "passthrough", text: line });
+  const parts = trimmed.slice(1).split(/\s+/u);
+  const head = parts[0] ?? "";
+  const args = parts.slice(1).join(" ");
+
+  const builtin = BUILTINS.find((b) => b.name === head);
+  if (builtin !== undefined) {
+    const helpText = buildHelpText(skills);
+    return builtin.run({ chat, clearTo, helpText });
   }
+  const skill = skills.get(head);
+  if (skill !== undefined) {
+    return Effect.succeed({
+      kind: "passthrough",
+      text: renderSkillTemplate(skill.content, args),
+    });
+  }
+  return Effect.succeed({ kind: "handled", text: `Unknown command: /${head}` });
 };
 
 // Drive one chat turn. Thin adapter over `runAgentTurn`: streams the agent loop

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
+import { Effect } from "effect";
 import { HarnessToolkit } from "../src/toolkit.ts";
+import { harnessLayerWithSkills } from "./utilities.ts";
 
 // Anthropic reserves these names for its provider-defined (server-side) tools.
 // `@effect/ai-anthropic` unconditionally rewrites incoming `tool_use.name`
@@ -19,10 +21,13 @@ const ANTHROPIC_RESERVED_TOOL_NAMES = new Set([
 ]);
 
 describe("HarnessToolkit reserved-name guard", () => {
-  it("no registered tool name collides with an Anthropic provider-defined tool", () => {
-    const collisions = Object.keys(HarnessToolkit.tools).filter((name) =>
-      ANTHROPIC_RESERVED_TOOL_NAMES.has(name),
-    );
-    expect(collisions).toEqual([]);
-  });
+  it.effect("no registered tool name collides with an Anthropic provider-defined tool", () =>
+    Effect.gen(function* () {
+      const toolkit = yield* HarnessToolkit;
+      const collisions = Object.keys(toolkit.tools).filter((name) =>
+        ANTHROPIC_RESERVED_TOOL_NAMES.has(name),
+      );
+      expect(collisions).toEqual([]);
+    }).pipe(Effect.provide(harnessLayerWithSkills([]))),
+  );
 });

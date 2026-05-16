@@ -2,9 +2,9 @@ import { AiError, Chat } from "@effect/ai";
 import type * as Response from "@effect/ai/Response";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Ref, Stream } from "effect";
-import { HarnessToolkitLayer } from "../src/index.ts";
 import { runAgentTurn, stepCountIs, type TurnEvent } from "../src/agent-loop.ts";
-import { withLanguageModel } from "./utilities.ts";
+import { harnessLayerWithSkills, withLanguageModel } from "./utilities.ts";
+const HarnessToolkitLayer = harnessLayerWithSkills([]);
 
 const finishPart = (reason: Response.FinishReason): Response.StreamPartEncoded => ({
   type: "finish",

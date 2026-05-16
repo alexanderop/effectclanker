@@ -1,9 +1,10 @@
 import { Tool } from "@effect/ai";
 import { Command } from "@effect/platform";
 import type { CommandExecutor } from "@effect/platform/CommandExecutor";
-import { Duration, Effect, Fiber, Schema, Stream } from "effect";
+import { Chunk, Duration, Effect, Fiber, Schema, Stream } from "effect";
 import { ApprovalPolicy } from "./approval-policy.ts";
 import { ShellError, ShellSpawnFailed } from "./errors.ts";
+import { TruncationStore } from "./truncate.ts";
 
 export const ShellResultSchema = Schema.Struct({
   stdout: Schema.String,
@@ -11,6 +12,10 @@ export const ShellResultSchema = Schema.Struct({
   exitCode: Schema.Number,
   timedOut: Schema.Boolean,
   truncated: Schema.Boolean,
+  // Path to a tmp file holding the full pre-cap combined stdout+stderr when
+  // `truncated` is true. `null` when no truncation happened, or when truncation
+  // happened but the FS write failed (graceful degradation per ADR-0003).
+  outputPath: Schema.NullOr(Schema.String),
 });
 
 export type ShellResult = typeof ShellResultSchema.Type;
@@ -22,7 +27,7 @@ export type ShellResult = typeof ShellResultSchema.Type;
 // union. See docs/patterns/effect-ai-gotchas.md §4.
 export const ShellTool = Tool.make("shell", {
   description:
-    "Run a shell command via `sh -c`. Captures stdout, stderr, exit code. Default timeout 10s, output capped at 256 KiB. Env is scrubbed to PATH/HOME/USER/LANG/LC_ALL/TERM.",
+    "Run a shell command via `sh -c`. Captures stdout, stderr, exit code. Default timeout 10s, each stream capped at 50 KiB (tail direction — keeps the end where errors live). When truncated, `outputPath` names a tmp file with the full pre-cap stdout+stderr. Env is scrubbed to PATH/HOME/USER/LANG/LC_ALL/TERM.",
   parameters: {
     command: Schema.String,
     cwd: Schema.optional(Schema.String),
@@ -40,7 +45,7 @@ export interface ShellParams {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-const MAX_OUTPUT_BYTES = 256 * 1024;
+const MAX_OUTPUT_BYTES = 50 * 1024;
 const ALLOWED_ENV_KEYS = new Set(["PATH", "HOME", "USER", "LANG", "LC_ALL", "TERM"]);
 
 // `@effect/platform-node`'s CommandExecutor merges `process.env` with our
@@ -60,32 +65,39 @@ const buildScrubbedEnv = (): Record<string, string> => {
   return out;
 };
 
-interface CaptureState {
-  readonly buf: string;
-  readonly bytes: number;
-  readonly truncated: boolean;
-}
-
-const captureStream = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.Effect<CaptureState, E> =>
-  Stream.runFold(stream, { buf: "", bytes: 0, truncated: false } as CaptureState, (acc, chunk) => {
-    if (acc.bytes >= MAX_OUTPUT_BYTES) return { ...acc, truncated: true };
-    const remaining = MAX_OUTPUT_BYTES - acc.bytes;
-    const take = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
-    const text = new TextDecoder().decode(take);
-    return {
-      buf: acc.buf + text,
-      bytes: acc.bytes + take.length,
-      truncated: acc.truncated || chunk.length > remaining,
-    };
-  });
+// Collect the full byte stream. We retain everything (memory-bounded by what
+// the child process actually emits, same as before) so that on truncation the
+// full output can be persisted via TruncationStore. The capped slice for the
+// model is computed at the end via a tail-direction `subarray`.
+const captureStream = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.Effect<Buffer, E> =>
+  Stream.runCollect(stream).pipe(
+    Effect.map((chunks) =>
+      Buffer.concat(Chunk.toReadonlyArray(chunks).map((chunk) => Buffer.from(chunk))),
+    ),
+  );
 
 type RaceResult = { readonly kind: "exit"; readonly code: number } | { readonly kind: "timeout" };
+
+// Decode bytes, taking the trailing `maxBytes` if the buffer is over cap.
+// UTF-8 boundary safety: a multi-byte char split at the slice boundary decodes
+// to U+FFFD via TextDecoder's default replacement. Acceptable for shell output.
+const decodeTail = (buf: Buffer): { readonly text: string; readonly truncated: boolean } => {
+  if (buf.length <= MAX_OUTPUT_BYTES) {
+    return { text: new TextDecoder().decode(buf), truncated: false };
+  }
+  const tail = buf.subarray(buf.length - MAX_OUTPUT_BYTES);
+  return { text: new TextDecoder().decode(tail), truncated: true };
+};
 
 export const shellHandler = ({
   command,
   cwd,
   timeoutMs,
-}: ShellParams): Effect.Effect<ShellResult, ShellError, CommandExecutor | ApprovalPolicy> =>
+}: ShellParams): Effect.Effect<
+  ShellResult,
+  ShellError,
+  CommandExecutor | ApprovalPolicy | TruncationStore
+> =>
   Effect.gen(function* () {
     const approval = yield* ApprovalPolicy;
     yield* approval.requireApproval({ kind: "shell", command, cwd });
@@ -129,15 +141,27 @@ export const shellHandler = ({
           exitCode = outcome.code;
         }
 
-        const stdoutState = yield* Fiber.join(stdoutFiber);
-        const stderrState = yield* Fiber.join(stderrFiber);
+        const stdoutFull = yield* Fiber.join(stdoutFiber);
+        const stderrFull = yield* Fiber.join(stderrFiber);
+
+        const stdoutDecoded = decodeTail(stdoutFull);
+        const stderrDecoded = decodeTail(stderrFull);
+        const truncated = stdoutDecoded.truncated || stderrDecoded.truncated;
+
+        let outputPath: string | null = null;
+        if (truncated) {
+          const store = yield* TruncationStore;
+          const combined = `${new TextDecoder().decode(stdoutFull)}\n--- STDERR ---\n${new TextDecoder().decode(stderrFull)}`;
+          outputPath = yield* store.persist(combined);
+        }
 
         return {
-          stdout: stdoutState.buf,
-          stderr: stderrState.buf,
+          stdout: stdoutDecoded.text,
+          stderr: stderrDecoded.text,
           exitCode,
           timedOut,
-          truncated: stdoutState.truncated || stderrState.truncated,
+          truncated,
+          outputPath,
         };
       }),
     );

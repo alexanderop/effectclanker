@@ -22,8 +22,24 @@ export type TurnEvent =
       readonly isFailure: boolean;
       readonly result: unknown;
     }
-  | { readonly kind: "finish"; readonly reason: string }
+  | {
+      readonly kind: "finish";
+      readonly reason: string;
+      readonly usage: RoundUsage;
+    }
   | { readonly kind: "error"; readonly message: string };
+
+// Per-Round token usage. `cacheReadTokens` is what proves the cacheControl
+// marker is firing; `cacheWriteTokens` shows up on the first request of a
+// session (and again whenever the cached prefix changes). Anthropic returns
+// cache reads in `Response.Usage.cachedInputTokens` but stashes writes in
+// `metadata.anthropic.usage.cache_creation_input_tokens` — see partToEvent.
+export interface RoundUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly cacheWriteTokens: number;
+}
 
 export type StopCondition = (state: { readonly step: number }) => boolean;
 
@@ -84,8 +100,30 @@ const partToEvent = (raw: unknown): TurnEvent | undefined => {
       };
     }
     case "finish": {
-      const fp = part as { readonly reason: string };
-      return { kind: "finish", reason: fp.reason };
+      const fp = part as {
+        readonly reason: string;
+        readonly usage?: {
+          readonly inputTokens?: number;
+          readonly outputTokens?: number;
+          readonly cachedInputTokens?: number;
+        };
+        readonly metadata?: {
+          readonly anthropic?: {
+            readonly usage?: { readonly cache_creation_input_tokens?: number | null };
+          };
+        };
+      };
+      const cacheWrite = fp.metadata?.anthropic?.usage?.cache_creation_input_tokens ?? 0;
+      return {
+        kind: "finish",
+        reason: fp.reason,
+        usage: {
+          inputTokens: fp.usage?.inputTokens ?? 0,
+          outputTokens: fp.usage?.outputTokens ?? 0,
+          cacheReadTokens: fp.usage?.cachedInputTokens ?? 0,
+          cacheWriteTokens: cacheWrite,
+        },
+      };
     }
     case "error": {
       const ep = part as { readonly error: unknown };
@@ -133,13 +171,14 @@ export const runAgentTurn = (options: RunAgentTurnOptions) => {
       Effect.gen(function* () {
         const finishRef = yield* Ref.make<string | undefined>(undefined);
         const erroredRef = yield* Ref.make(false);
+        const toolkit = yield* HarnessToolkit;
 
         // Round 0 sends the user's prompt; subsequent rounds send `Prompt.empty`
         // so Chat.streamText doesn't prepend a phantom empty user turn before
         // the model sees the tool results it just produced.
         const userPrompt = step === 0 ? prompt : Prompt.empty;
 
-        const modelStream = chat.streamText({ prompt: userPrompt, toolkit: HarnessToolkit }).pipe(
+        const modelStream = chat.streamText({ prompt: userPrompt, toolkit }).pipe(
           Stream.tap((part) => {
             const p = part as AnyStreamPart;
             if (p.type === "finish") {

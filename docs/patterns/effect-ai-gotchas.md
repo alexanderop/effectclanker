@@ -414,3 +414,20 @@ The canonical pattern for mocking `LanguageModel` in tests lives in
 It's not exported from the package. We mirror it in `test/utilities.ts` so
 test bodies stay clean. If you upgrade `@effect/ai`, glance at the upstream
 file to see if the mock shape changed.
+
+### Skills: verbose XML in the system prompt, compact markdown in the tool description
+
+The skill registry feeds two places: the seeded system prompt's
+`<available_skills>` block (verbose XML — `<name>`, `<description>`,
+`<location>` per entry), and the `skill` tool's `description` field (a flat
+markdown list — `- **name**: description`). The split is empirical, not
+aesthetic.
+
+Opencode's `session/system.ts:73-74` records the finding:
+
+> the agents seem to ingest the information about skills a bit better if
+> we present a more verbose version of them here and a less verbose
+> version in tool description, rather than vice versa
+
+If you ever inline the same XML block into the tool description, expect
+load-rate regressions on skill invocation.

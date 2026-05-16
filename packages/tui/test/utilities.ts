@@ -4,4 +4,4 @@
 // @effectclanker/harness'. The tui package depends on both, so re-exporting
 // here keeps the tui tests' import paths package-local.
 export { expectLeft } from "../../tools/test/utilities.ts";
-export { withLanguageModel } from "../../harness/test/utilities.ts";
+export { harnessLayerWithSkills, withLanguageModel } from "../../harness/test/utilities.ts";

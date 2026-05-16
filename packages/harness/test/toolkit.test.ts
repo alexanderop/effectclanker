@@ -1,6 +1,25 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
-import { mockText, mockToolCall, runToolkit, withTmpDir, writeFiles } from "./utilities.ts";
+import { Effect, Layer } from "effect";
+import { NodeContext } from "@effect/platform-node";
+import {
+  ApprovalAutoApproveLayer,
+  PlanStoreLayer,
+  TruncationStoreLive,
+} from "@effectclanker/tools";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
+import {
+  HarnessToolkit,
+  mockText,
+  mockToolCall,
+  runToolkit,
+  type SkillInfo,
+  type SkillsInterface,
+  withTmpDir,
+  writeFiles,
+} from "./utilities.ts";
+import { Skills } from "../src/skills.ts";
+import { HarnessToolkitCoreLayer } from "../src/toolkit.ts";
 
 describe("HarnessToolkit driven by generateText", () => {
   it.effect("dispatches a glob tool call to its handler and returns the result", () =>
@@ -16,7 +35,9 @@ describe("HarnessToolkit driven by generateText", () => {
         expect(response.toolCalls[0]?.name).toBe("glob");
         expect(response.toolResults).toHaveLength(1);
         const result = response.toolResults[0]?.result;
-        expect((result as ReadonlyArray<string>).toSorted()).toEqual(["a.ts", "b.ts"]);
+        // glob's success schema is `Schema.String` (truncation hints embed
+        // inline, per ADR-0003). Split on newlines to compare entries.
+        expect((result as unknown as string).split("\n").toSorted()).toEqual(["a.ts", "b.ts"]);
       }),
     ),
   );
@@ -98,5 +119,71 @@ describe("HarnessToolkit driven by generateText", () => {
         /Failed to decode tool call parameters/,
       );
     }),
+  );
+
+  it.effect("dispatches a skill call and emits content back", () =>
+    withTmpDir("toolkit-skill", (dir) =>
+      Effect.gen(function* () {
+        const skillDir = path.join(dir, "foo");
+        yield* Effect.promise(() => fs.mkdir(skillDir, { recursive: true }));
+        yield* writeFiles(skillDir, { "SKILL.md": "placeholder" });
+        const info: SkillInfo = {
+          name: "foo",
+          description: "foo skill",
+          location: path.join(skillDir, "SKILL.md"),
+          content: "BODY",
+        };
+        const response = yield* runToolkit({
+          prompt: "load foo",
+          parts: [mockToolCall("skill", { name: "foo" })],
+          skills: [info],
+        });
+        expect(response.toolCalls).toHaveLength(1);
+        expect(response.toolCalls[0]?.name).toBe("skill");
+        expect(response.toolResults).toHaveLength(1);
+        const result = response.toolResults[0]?.result as unknown;
+        expect(typeof result).toBe("string");
+        expect(result as string).toContain('<skill_content name="foo">');
+        expect(result as string).toContain("BODY");
+      }),
+    ),
+  );
+
+  it.effect("registers only the base tools when no skills are discovered", () =>
+    Effect.gen(function* () {
+      const toolkit = yield* HarnessToolkit;
+      const toolNames = Object.keys(toolkit.tools);
+      expect(toolNames).not.toContain("skill");
+      // Base set is 8 in the current build: read, write, edit, apply_patch,
+      // shell, grep, glob, update_plan.
+      expect(toolNames).toEqual(
+        expect.arrayContaining([
+          "read",
+          "write",
+          "edit",
+          "apply_patch",
+          "shell",
+          "grep",
+          "glob",
+          "update_plan",
+        ]),
+      );
+      expect(toolNames).toHaveLength(8);
+    }).pipe(
+      Effect.provide(
+        HarnessToolkitCoreLayer.pipe(
+          Layer.provide(
+            Layer.succeed(Skills, {
+              all: [],
+              get: () => undefined,
+            } as SkillsInterface),
+          ),
+          Layer.provide(ApprovalAutoApproveLayer),
+          Layer.provide(PlanStoreLayer),
+          Layer.provide(TruncationStoreLive),
+          Layer.provide(NodeContext.layer),
+        ),
+      ),
+    ),
   );
 });

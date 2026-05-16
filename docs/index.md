@@ -1,5 +1,12 @@
 # Docs
 
+## Adr
+
+- [[adr/0001-builtin-slash-commands-shadow-skills]]
+- [[adr/0002-cache-system-prompt-only]]
+- [[adr/0003-persist-truncated-tool-outputs]]
+- [[adr/0004-agents-file-discovery-is-cwd-only]]
+
 ## Guides
 
 - [[guides/adding-a-tool]]
@@ -9,6 +16,7 @@
 
 - [[patterns/chat-ui-style]]
 - [[patterns/effect-ai-gotchas]]
+- [[patterns/ink-gotchas]]
 - [[patterns/oxlint-effect-rules]]
 - [[patterns/pi-api-key-resolution]]
 

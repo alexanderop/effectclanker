@@ -2,9 +2,16 @@ import { AiError, Chat, Prompt } from "@effect/ai";
 import type * as Response from "@effect/ai/Response";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect, Ref, Stream } from "effect";
-import { chatWithEnvironment, HarnessToolkitLayer } from "@effectclanker/harness";
+import { chatWithEnvironment, type SkillInfo, type SkillsInterface } from "@effectclanker/harness";
 import { runChatTurn, slashCommand, type TurnEvent } from "../src/chat.ts";
-import { withLanguageModel } from "./utilities.ts";
+import { harnessLayerWithSkills, withLanguageModel } from "./utilities.ts";
+const HarnessToolkitLayer = harnessLayerWithSkills([]);
+
+const makeSkills = (skills: ReadonlyArray<SkillInfo> = []): SkillsInterface => {
+  const byName = new Map(skills.map((s) => [s.name, s] as const));
+  return { all: skills, get: (name) => byName.get(name) };
+};
+const emptySkills = makeSkills([]);
 
 const finishPart = (reason: Response.FinishReason = "stop"): Response.StreamPartEncoded => ({
   type: "finish",
@@ -198,7 +205,7 @@ describe("slashCommand", () => {
     Effect.gen(function* () {
       const chat = yield* Chat.empty;
       yield* Ref.set(chat.history, Prompt.make("seeded"));
-      const result = yield* slashCommand("/clear", chat);
+      const result = yield* slashCommand("/clear", chat, emptySkills);
       expect(result.kind).toBe("cleared");
       const history = yield* Ref.get(chat.history);
       expect(history).toStrictEqual(Prompt.empty);
@@ -208,7 +215,7 @@ describe("slashCommand", () => {
   it.effect("/help returns the three command names", () =>
     Effect.gen(function* () {
       const chat = yield* Chat.empty;
-      const result = yield* slashCommand("/help", chat);
+      const result = yield* slashCommand("/help", chat, emptySkills);
       expect(result.kind).toBe("handled");
       if (result.kind === "handled") {
         expect(result.text).toContain("/exit");
@@ -218,18 +225,18 @@ describe("slashCommand", () => {
     }),
   );
 
-  it.effect("unknown /foo is forwarded to the model as-is", () =>
+  it.effect("unknown /foo is reported as an unknown command", () =>
     Effect.gen(function* () {
       const chat = yield* Chat.empty;
-      const result = yield* slashCommand("/foo bar", chat);
-      expect(result).toStrictEqual({ kind: "passthrough", text: "/foo bar" });
+      const result = yield* slashCommand("/foo bar", chat, emptySkills);
+      expect(result).toStrictEqual({ kind: "handled", text: "Unknown command: /foo" });
     }),
   );
 
   it.effect("/exit returns a quit signal", () =>
     Effect.gen(function* () {
       const chat = yield* Chat.empty;
-      const result = yield* slashCommand("/exit", chat);
+      const result = yield* slashCommand("/exit", chat, emptySkills);
       expect(result).toStrictEqual({ kind: "quit" });
     }),
   );
@@ -244,7 +251,7 @@ describe("slashCommand", () => {
       const seed = [{ role: "system" as const, content: "X" }];
 
       const chat1 = yield* chatWithEnvironment(env);
-      yield* slashCommand("/clear", chat1, seed);
+      yield* slashCommand("/clear", chat1, emptySkills, seed);
       const h1 = yield* Ref.get(chat1.history);
       expect(h1.content).toHaveLength(1);
       const msg1 = h1.content[0];
@@ -254,9 +261,116 @@ describe("slashCommand", () => {
       }
 
       const chat2 = yield* chatWithEnvironment(env);
-      yield* slashCommand("/clear", chat2);
+      yield* slashCommand("/clear", chat2, emptySkills);
       const h2 = yield* Ref.get(chat2.history);
       expect(h2).toStrictEqual(Prompt.empty);
+    }),
+  );
+
+  it.effect("/<skill> renders body as passthrough", () =>
+    Effect.gen(function* () {
+      const chat = yield* Chat.empty;
+      const skills = makeSkills([
+        {
+          name: "foo",
+          description: "test skill",
+          location: "/tmp/foo/SKILL.md",
+          content: "BODY",
+        },
+      ]);
+      const result = yield* slashCommand("/foo", chat, skills);
+      expect(result).toStrictEqual({ kind: "passthrough", text: "BODY" });
+    }),
+  );
+
+  it.effect("$ARGUMENTS is replaced with the trimmed arg string", () =>
+    Effect.gen(function* () {
+      const chat = yield* Chat.empty;
+      const skills = makeSkills([
+        {
+          name: "foo",
+          description: "test skill",
+          location: "/tmp/foo/SKILL.md",
+          content: "pre $ARGUMENTS post",
+        },
+      ]);
+      const result = yield* slashCommand("/foo bar baz", chat, skills);
+      expect(result).toStrictEqual({ kind: "passthrough", text: "pre bar baz post" });
+    }),
+  );
+
+  it.effect("body without $ARGUMENTS appends args with double newline", () =>
+    Effect.gen(function* () {
+      const chat = yield* Chat.empty;
+      const skills = makeSkills([
+        {
+          name: "foo",
+          description: "test skill",
+          location: "/tmp/foo/SKILL.md",
+          content: "BODY",
+        },
+      ]);
+      const result = yield* slashCommand("/foo hello", chat, skills);
+      expect(result).toStrictEqual({ kind: "passthrough", text: "BODY\n\nhello" });
+    }),
+  );
+
+  it.effect("body without $ARGUMENTS and no args returns body unchanged", () =>
+    Effect.gen(function* () {
+      const chat = yield* Chat.empty;
+      const skills = makeSkills([
+        {
+          name: "foo",
+          description: "test skill",
+          location: "/tmp/foo/SKILL.md",
+          content: "BODY",
+        },
+      ]);
+      const result = yield* slashCommand("/foo", chat, skills);
+      expect(result).toStrictEqual({ kind: "passthrough", text: "BODY" });
+    }),
+  );
+
+  it.effect("/help includes discovered skill names when non-empty", () =>
+    Effect.gen(function* () {
+      const chat = yield* Chat.empty;
+      const skills = makeSkills([
+        {
+          name: "foo",
+          description: "test skill",
+          location: "/tmp/foo/SKILL.md",
+          content: "BODY",
+        },
+      ]);
+      const result = yield* slashCommand("/help", chat, skills);
+      expect(result.kind).toBe("handled");
+      if (result.kind === "handled") {
+        expect(result.text).toContain("Skills:");
+        expect(result.text).toContain("/foo — test skill");
+      }
+    }),
+  );
+
+  it.effect("built-in /clear wins when a same-named skill leaks through", () =>
+    Effect.gen(function* () {
+      // The shadow filter runs at SkillsLayer time, so under normal operation
+      // skills.get("clear") returns undefined. We still defend in dispatch:
+      // even when a caller wires up a bogus Skills that returns a clear
+      // skill, builtin /clear must take precedence.
+      const chat = yield* Chat.empty;
+      yield* Ref.set(chat.history, Prompt.make("seeded"));
+      const skills = makeSkills([
+        {
+          name: "clear",
+          description: "should not win",
+          location: "/tmp/clear/SKILL.md",
+          content: "BODY",
+        },
+      ]);
+      const result = yield* slashCommand("/clear", chat, skills);
+      expect(result.kind).toBe("cleared");
+      const history = yield* Ref.get(chat.history);
+      expect(history).toStrictEqual(Prompt.empty);
     }),
   );
 });

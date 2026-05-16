@@ -11,7 +11,35 @@ import { randomUUID } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { HarnessToolkit, HarnessToolkitLayer } from "../src/toolkit.ts";
+import * as Layer from "effect/Layer";
+import { HarnessToolkit, HarnessToolkitCoreLayer } from "../src/toolkit.ts";
+import { Skills, type SkillsInterface, type SkillInfo } from "../src/skills.ts";
+import {
+  ApprovalAutoApproveLayer,
+  PlanStoreLayer,
+  TruncationStoreLive,
+} from "@effectclanker/tools";
+import { NodeContext } from "@effect/platform-node";
+export { HarnessToolkit } from "../src/toolkit.ts";
+export type { SkillsInterface, SkillInfo };
+
+const makeSkillsService = (skills: ReadonlyArray<SkillInfo>): SkillsInterface => {
+  const byName = new Map(skills.map((s) => [s.name, s] as const));
+  return { all: skills, get: (name) => byName.get(name) };
+};
+
+// Builds a `HarnessToolkitLayer` whose Skills service is injected with the
+// provided list, bypassing the on-disk `~/.claude/skills` scan that the
+// production `SkillsLayer` performs. Use in tests that need deterministic
+// skill membership without polluting stderr with discovery warnings.
+export const harnessLayerWithSkills = (skills: ReadonlyArray<SkillInfo>) =>
+  HarnessToolkitCoreLayer.pipe(
+    Layer.provide(Layer.succeed(Skills, makeSkillsService(skills))),
+    Layer.provide(ApprovalAutoApproveLayer),
+    Layer.provide(PlanStoreLayer),
+    Layer.provide(TruncationStoreLive),
+    Layer.provide(NodeContext.layer),
+  );
 
 // Per-test tmp dir, cleaned up via `Effect.acquireUseRelease` even on failure.
 // Duplicated from packages/tools/test/utilities.ts intentionally — the spec
@@ -127,8 +155,15 @@ export const runToolkit = (options: {
     | ((
         opts: LanguageModel.ProviderOptions,
       ) => Array<Response.PartEncoded> | Effect.Effect<Array<Response.PartEncoded>>);
+  skills?: ReadonlyArray<SkillInfo>;
 }) =>
-  LanguageModel.generateText({
-    prompt: options.prompt,
-    toolkit: HarnessToolkit,
-  }).pipe(withLanguageModel({ generateText: options.parts }), Effect.provide(HarnessToolkitLayer));
+  Effect.gen(function* () {
+    const toolkit = yield* HarnessToolkit;
+    return yield* LanguageModel.generateText({
+      prompt: options.prompt,
+      toolkit,
+    });
+  }).pipe(
+    withLanguageModel({ generateText: options.parts }),
+    Effect.provide(harnessLayerWithSkills(options.skills ?? [])),
+  );
